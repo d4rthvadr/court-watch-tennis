@@ -1,11 +1,14 @@
 import express, { Request, Response } from "express";
 import crypto from "crypto";
+import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 4001;
-const updateInterval = 15 * 1000; // 15 seconds
+const updateInterval = 5 * 1000; // 15 seconds
 
 const clientStore = new Map<string, Response>();
+
+app.use(cors());
 
 app.get("/health", (_, res: Response) => {
   res.status(200).send("OK\n");
@@ -22,7 +25,7 @@ const getUpdateInterval = (
   const parsed = parseInt(interval || "");
   return isNaN(parsed) ? defaultInterval : parsed;
 };
-app.get("/events", (req: Request, res: Response) => {
+app.get("/sse", (req: Request, res: Response) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -39,7 +42,7 @@ app.get("/events", (req: Request, res: Response) => {
 
   clientStore.set(clientId, res);
 
-  console.log("Client connected to /events");
+  console.log("Client connected to /sse");
 
   const sendEvent = (data: string) => {
     res.write(`data: ${data}\n\n`);
@@ -51,8 +54,11 @@ app.get("/events", (req: Request, res: Response) => {
   }, clientUpdateInterval);
 
   req.on("close", () => {
-    clientStore.delete(clientId);
-    console.log(`Client ${clientId} disconnected from /events`);
+    const isRemoved = clientStore.delete(clientId);
+    console.log(
+      `Client ${clientId} disconnected from /sse`,
+      isRemoved ? "" : "(was not found)"
+    );
     clearInterval(intervalId);
   });
 });
