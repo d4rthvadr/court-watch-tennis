@@ -1,2 +1,31 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script>
+	import { onMount } from 'svelte';
+	import { Navbar } from "$lib/components";
+
+    /**
+	 * @type {any}
+	 */
+    let data;
+
+	onMount(() => {
+		const eventSource = new EventSource("http://localhost:4001/sse");
+		
+		eventSource.onmessage = (event) => {
+			console.log("New event:", event.data);
+            data = event.data;
+		};
+
+		eventSource.onerror = (error) => {
+			console.error("EventSource failed:", error);
+			eventSource.close();
+		};
+
+		// Cleanup function to close EventSource when component unmounts
+		return () => {
+			eventSource.close();
+		};
+	});
+</script>
+<Navbar></Navbar>
+
+<h1>Welcome to SvelteKit {data}</h1>
