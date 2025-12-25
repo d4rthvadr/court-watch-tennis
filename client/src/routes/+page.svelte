@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { Navbar } from "$lib/components";
+	import { Navbar, RankTable } from "$lib/components";
 
     /**
 	 * @type {any}
@@ -17,7 +17,6 @@
 
 		eventSource.onerror = (error) => {
 			console.error("EventSource failed:", error);
-			eventSource.close();
 		};
 
 		// Cleanup function to close EventSource when component unmounts
@@ -28,4 +27,5 @@
 </script>
 <Navbar></Navbar>
 
-<h1>Welcome to SvelteKit {data}</h1>
+
+<RankTable></RankTable>
