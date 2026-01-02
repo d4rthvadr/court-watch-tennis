@@ -1,3 +1,4 @@
+import { NotFoundError } from "./errors";
 import { Game } from "./types";
 
 const initialGames: Game[] = [
@@ -32,7 +33,7 @@ class GameController {
     const game = initialGames.find((game) => game.id === id);
 
     if (!game) {
-      throw new Error("Game not found");
+      throw new NotFoundError(`Game not found with id: ${id}`);
     }
 
     return game;
@@ -42,7 +43,7 @@ class GameController {
     const matchingGames = this.games.filter((g) => g.id == game.id);
 
     if (matchingGames.length > 0) {
-      throw new Error("Game already exists");
+      throw new NotFoundError(`Game already exists with id: ${game.id}`);
     }
 
     this.games = [...matchingGames, game];
