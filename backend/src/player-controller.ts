@@ -1,5 +1,5 @@
-import { EventEmitter } from "stream";
-import { PlayerWithGameStatus } from "./types";
+import { EventTypes, PlayerWithGameStatus } from "./types";
+import { eventBus } from "./event-bus";
 
 const initialPlayers: PlayerWithGameStatus[] = [
   {
@@ -52,21 +52,34 @@ const initialPlayers: PlayerWithGameStatus[] = [
     court: "Court 7",
   },
 ];
+
+interface EventData<T = unknown> {
+  type: EventTypes;
+  payload: T;
+}
+
+export const createEventData = (type: EventTypes, payload: unknown): string => {
+  const data = {
+    type,
+    payload,
+  } satisfies EventData;
+
+  return JSON.stringify(data);
+};
 class PlayerController {
   players: PlayerWithGameStatus[] = initialPlayers;
-  #eventBus: EventEmitter | null = null;
-  init(eventBus: EventEmitter) {
-    this.#eventBus = eventBus;
+
+  create(player: PlayerWithGameStatus) {
+    this.players.push(player);
+
+    const eventData = createEventData(EventTypes.playerCreated, player);
+    console.log("Player created and event emitted:", { player, eventData });
+
+    eventBus.createEvent(EventTypes.playerCreated, player);
+    eventBus.createEvent(EventTypes.sseNotification, eventData);
   }
 
-  get eventBus(): EventEmitter {
-    if (!this.#eventBus) {
-      throw new Error("Event bus not initialized");
-    }
-    return this.#eventBus;
-  }
-
-  getPlayers() {
+  getPlayerRankings() {
     return this.players.map((player) => {
       const gameStatuses = ["Paid", "Pending", "Unpaid"];
       const playerStatuses = ["Playing", "Waiting"];
@@ -80,12 +93,6 @@ class PlayerController {
         gameStatus: randomGameStatus,
       };
     });
-  }
-
-  createPlayer(player: PlayerWithGameStatus) {
-    this.players.push(player);
-    console.log("Player created:", player);
-    this.eventBus.emit("playerCreated", player);
   }
 }
 
