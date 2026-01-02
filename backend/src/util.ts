@@ -1,4 +1,6 @@
+import { NextFunction } from "express";
 import { connectedClients } from "./routes/sse-router";
+import { Request, Response } from "express";
 
 export const gracefulShutdown = (signal: "SIGINT" | "SIGTERM", server: any) => {
   console.log(`\n${signal} received. Starting graceful shutdown...`);
@@ -39,3 +41,8 @@ export const gracefulShutdown = (signal: "SIGINT" | "SIGTERM", server: any) => {
     process.exit(1);
   }, 10 * 1000);
 };
+
+export const asyncHandler =
+  (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
+    return Promise.resolve(fn(req, res, next)).catch(next);
+  };
