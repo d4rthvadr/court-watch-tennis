@@ -18,8 +18,18 @@ $effect(() => {
 
  eventSource.onmessage = (event) => {
   console.log("New event received:", event.data);
-  const updatedPlayers = JSON.parse(event.data);
-  playerGameStatusStore = updatedPlayers;
+
+  // Add logic to parse and act based on event type if needed
+
+  const parsedData = JSON.parse(event.data);
+
+  console.log("Parsed event data:", parsedData);
+
+  if (parsedData.type === "playerCreated") {
+   console.log("Player created event data:", parsedData.data);
+  }else if (parsedData.type === "sseNotification") {
+   playerGameStatusStore = parsedData.payload;
+  }
 
  };
 

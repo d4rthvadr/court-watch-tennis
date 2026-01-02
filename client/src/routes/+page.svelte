@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { Navbar, RankTable } from "$lib/components";
+	import { RankTable } from "$lib/components";
 
     /**
 	 * @type {any}
@@ -25,7 +25,6 @@
 		};
 	});
 </script>
-<Navbar></Navbar>
 
 
 <RankTable></RankTable>
