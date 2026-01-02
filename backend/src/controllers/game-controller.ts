@@ -1,5 +1,5 @@
-import { NotFoundError } from "./errors";
-import { Game } from "./types";
+import { NotFoundError } from "../errors";
+import { Game } from "../types";
 
 const initialGames: Game[] = [
   {

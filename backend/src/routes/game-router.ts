@@ -1,11 +1,15 @@
-import { Router } from "express";
-import { gameController } from "../game-controller";
+import { Router, Request, Response } from "express";
+import { gameController } from "../controllers";
+import { asyncHandler } from "../util";
 
 const router = Router();
 
-router.get("/", (_, res) => {
-  const availableGames = gameController.findAll();
-  res.status(200).json({ data: availableGames });
-});
+router.get(
+  "/",
+  asyncHandler((req: Request, res: Response) => {
+    const availableGames = gameController.findAll();
+    res.status(200).json({ data: availableGames });
+  })
+);
 
 export const gameRouter = router;

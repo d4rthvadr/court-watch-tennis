@@ -1,5 +1,5 @@
-import { EventTypes, PlayerWithGameStatus } from "./types";
-import { eventBus } from "./event-bus";
+import { EventTypes, PlayerWithGameStatus } from "../types";
+import { eventBus } from "../event-bus";
 
 const initialPlayers: PlayerWithGameStatus[] = [
   {

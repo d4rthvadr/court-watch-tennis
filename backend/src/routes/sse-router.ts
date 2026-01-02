@@ -2,7 +2,8 @@ import { Request, Response, Router } from "express";
 import crypto from "node:crypto";
 import { eventBus } from "../event-bus";
 import { EventTypes } from "../types";
-import { createEventData, playerController } from "../player-controller";
+import { createEventData, playerController } from "../controllers";
+import { asyncHandler } from "../util";
 const router = Router();
 
 const updateDefaultInterval = 15 * 1000;
@@ -21,51 +22,54 @@ const getUpdateInterval = (
   return isNaN(parsed) ? defaultInterval : parsed;
 };
 
-router.get("/sse", (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
+router.get(
+  "/sse",
+  asyncHandler((req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
 
-  const clientId = getClientId(req.query?.clientId?.toString());
-  const clientUpdateInterval = getUpdateInterval(
-    updateDefaultInterval,
-    req.query?.updateInterval?.toString()
-  );
-
-  console.log(
-    `Client ${clientId} connected with update interval ${clientUpdateInterval}ms`
-  );
-
-  connectedClients.set(clientId, res);
-
-  console.log("Client connected to /sse");
-
-  eventBus.registerListener(EventTypes.sseNotification, (payload) => {
-    console.log(`Sending SSE to client ${clientId}:`, payload);
-    res.write(`data: ${payload}\n\n`);
-  });
-
-  const sendEvent = () => {
-    const rankings = playerController.getPlayerRankings();
-
-    const eventData = createEventData(EventTypes.sseNotification, rankings);
-    res.write(`data: ${eventData}\n\n`);
-  };
-
-  const intervalId = setInterval(() => {
-    sendEvent();
-  }, clientUpdateInterval);
-
-  req.on("close", () => {
-    const isRemoved = connectedClients.delete(clientId);
-    console.log(
-      `Client ${clientId} disconnected from /sse`,
-      " Remaining clients:",
-      connectedClients.size,
-      isRemoved ? "" : "(was not found)"
+    const clientId = getClientId(req.query?.clientId?.toString());
+    const clientUpdateInterval = getUpdateInterval(
+      updateDefaultInterval,
+      req.query?.updateInterval?.toString()
     );
-    clearInterval(intervalId);
-  });
-});
+
+    console.log(
+      `Client ${clientId} connected with update interval ${clientUpdateInterval}ms`
+    );
+
+    connectedClients.set(clientId, res);
+
+    console.log("Client connected to /sse");
+
+    eventBus.registerListener(EventTypes.sseNotification, (payload) => {
+      console.log(`Sending SSE to client ${clientId}:`, payload);
+      res.write(`data: ${payload}\n\n`);
+    });
+
+    const sendEvent = () => {
+      const rankings = playerController.getPlayerRankings();
+
+      const eventData = createEventData(EventTypes.sseNotification, rankings);
+      res.write(`data: ${eventData}\n\n`);
+    };
+
+    const intervalId = setInterval(() => {
+      sendEvent();
+    }, clientUpdateInterval);
+
+    req.on("close", () => {
+      const isRemoved = connectedClients.delete(clientId);
+      console.log(
+        `Client ${clientId} disconnected from /sse`,
+        " Remaining clients:",
+        connectedClients.size,
+        isRemoved ? "" : "(was not found)"
+      );
+      clearInterval(intervalId);
+    });
+  })
+);
 
 export const sseRouter = router;
