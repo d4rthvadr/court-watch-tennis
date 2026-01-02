@@ -1,10 +1,11 @@
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import crypto from "crypto";
 import cors from "cors";
 import { createEventData, playerController } from "./player-controller";
 import { eventBus } from "./event-bus";
 import { EventTypes } from "./types";
-import { gameRouter } from "./routes";
+import { gameRouter, playerRouter } from "./routes";
+import { HttpError, InternalServerError } from "./errors";
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -20,36 +21,7 @@ app.get("/health", (_, res: Response) => {
 });
 
 app.use("/games", gameRouter);
-
-app.post("/players", (req: Request, res: Response) => {
-  try {
-    const { name, status, rank, gameStatus, court } = req.body;
-
-    if (!name || !status || !rank || !gameStatus || !court) {
-      return res.status(400).json({
-        error: "Missing required fields: name, status, rank, gameStatus, court",
-      });
-    }
-
-    const newPlayer = {
-      name,
-      status,
-      rank,
-      gameStatus,
-      court,
-    };
-
-    playerController.create(newPlayer);
-
-    res.status(201).json({
-      message: "Player created successfully",
-      player: newPlayer,
-    });
-  } catch (error) {
-    console.error("Error creating player:", error);
-    res.status(500).json({ error: "Failed to create player" });
-  }
-});
+app.use("/players", playerRouter);
 
 const getClientId = (clientId?: string): string => {
   return clientId || crypto.randomUUID();
@@ -108,6 +80,22 @@ app.get("/sse", (req: Request, res: Response) => {
     );
     clearInterval(intervalId);
   });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: "Endpoint not found" });
+});
+
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error("Unhandled error:", err);
+
+  if (err instanceof HttpError) {
+    return res.status(err.statusCode).json({ error: err.message });
+  }
+
+  console.error("Unexpected error type:", err);
+
+  res.status(500).json({ error: new InternalServerError().message });
 });
 
 app.listen(PORT, () => {
