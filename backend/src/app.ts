@@ -1,17 +1,11 @@
 import express, { NextFunction, Request, Response } from "express";
-import crypto from "crypto";
 import cors from "cors";
-import { createEventData, playerController } from "./player-controller";
-import { eventBus } from "./event-bus";
-import { EventTypes } from "./types";
-import { gameRouter, playerRouter } from "./routes";
+import { gameRouter, playerRouter, sseRouter } from "./routes";
 import { HttpError, InternalServerError } from "./errors";
+import { gracefulShutdown } from "./util";
 
 const app = express();
 const PORT = process.env.PORT || 4001;
-const updateDefaultInterval = 15 * 1000;
-
-const connectedClients = new Map<string, Response>();
 
 app.use(cors());
 app.use(express.json());
@@ -22,65 +16,7 @@ app.get("/health", (_, res: Response) => {
 
 app.use("/games", gameRouter);
 app.use("/players", playerRouter);
-
-const getClientId = (clientId?: string): string => {
-  return clientId || crypto.randomUUID();
-};
-
-const getUpdateInterval = (
-  defaultInterval: number,
-  interval?: string
-): number => {
-  const parsed = parseInt(interval || "");
-  return isNaN(parsed) ? defaultInterval : parsed;
-};
-
-app.get("/sse", (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  const clientId = getClientId(req.query?.clientId?.toString());
-  const clientUpdateInterval = getUpdateInterval(
-    updateDefaultInterval,
-    req.query?.updateInterval?.toString()
-  );
-
-  console.log(
-    `Client ${clientId} connected with update interval ${clientUpdateInterval}ms`
-  );
-
-  connectedClients.set(clientId, res);
-
-  console.log("Client connected to /sse");
-
-  eventBus.registerListener(EventTypes.sseNotification, (payload) => {
-    console.log(`Sending SSE to client ${clientId}:`, payload);
-    res.write(`data: ${payload}\n\n`);
-  });
-
-  const sendEvent = () => {
-    const rankings = playerController.getPlayerRankings();
-
-    const eventData = createEventData(EventTypes.sseNotification, rankings);
-    res.write(`data: ${eventData}\n\n`);
-  };
-
-  const intervalId = setInterval(() => {
-    sendEvent();
-  }, clientUpdateInterval);
-
-  req.on("close", () => {
-    const isRemoved = connectedClients.delete(clientId);
-    console.log(
-      `Client ${clientId} disconnected from /sse`,
-      " Remaining clients:",
-      connectedClients.size,
-      isRemoved ? "" : "(was not found)"
-    );
-    clearInterval(intervalId);
-  });
-});
+app.use("/events", sseRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Endpoint not found" });
@@ -98,8 +34,13 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   res.status(500).json({ error: new InternalServerError().message });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+// TODO: extract to separate module
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT", server));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM", server));
 
 export default app;
