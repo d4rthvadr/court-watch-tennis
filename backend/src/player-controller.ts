@@ -69,6 +69,19 @@ export const createEventData = (type: EventTypes, payload: unknown): string => {
 class PlayerController {
   players: PlayerWithGameStatus[] = initialPlayers;
 
+  findAll() {
+    return this.players;
+  }
+
+  find(id: string): PlayerWithGameStatus {
+    const player = this.players.find((player) => player.name === id);
+
+    if (!player) {
+      throw new Error("Player not found");
+    }
+    return player;
+  }
+
   create(player: PlayerWithGameStatus) {
     this.players.push(player);
 
