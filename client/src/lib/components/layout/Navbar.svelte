@@ -15,6 +15,10 @@
 			href: "/courts"
 		},
 		{
+			title: "Games",
+			href: "/games"
+		},
+		{
 			title: "Matches",
 			href: "/matches"
 		},
