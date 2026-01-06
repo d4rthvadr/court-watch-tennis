@@ -2,10 +2,8 @@ import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import { gameRouter, playerRouter, sseRouter } from "./routes";
 import { HttpError, InternalServerError } from "./errors";
-import { gracefulShutdown } from "./util";
 
 const app = express();
-const PORT = process.env.PORT || 4001;
 
 app.use(cors());
 app.use(express.json());
@@ -33,14 +31,5 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
   res.status(500).json({ error: new InternalServerError().message });
 });
-
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
-
-// TODO: extract to separate module
-
-process.on("SIGINT", () => gracefulShutdown("SIGINT", server));
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM", server));
 
 export default app;

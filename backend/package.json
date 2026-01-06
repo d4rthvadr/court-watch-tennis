@@ -1,12 +1,12 @@
 {
   "name": "@court-tennis/backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start:dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "start:dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node ./dist/app.js"
+    "start": "node ./dist/server.js"
   },
   "keywords": [],
   "author": "",
