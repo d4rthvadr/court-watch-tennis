@@ -1,6 +1,11 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
-import { gameRouter, playerRouter, sseRouter } from "./routes";
+import {
+  gameRouter,
+  playerRouter,
+  sseRouter,
+  tournamentRouter,
+} from "./routes";
 import { HttpError, InternalServerError } from "./errors";
 
 const app = express();
@@ -14,6 +19,7 @@ app.get("/health", (_, res: Response) => {
 
 app.use("/games", gameRouter);
 app.use("/players", playerRouter);
+app.use("/tournaments", tournamentRouter);
 app.use("/events", sseRouter);
 
 app.use((req, res) => {
