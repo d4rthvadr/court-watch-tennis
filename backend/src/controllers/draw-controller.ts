@@ -8,8 +8,11 @@ import {
   SurfaceType,
   DrawSize,
   MatchType,
+  EventTypes,
+  RoundTypeEnum,
 } from "../types";
 import { drawService } from "../services/draw-service";
+import { eventBus } from "../event-bus";
 
 interface CreateTournamentRequest {
   name: string;
@@ -146,13 +149,76 @@ class DrawController {
     draw.matches = updatedMatches;
     this.draws.set(tournamentId, draw);
 
+    // Emit player advanced event
+    eventBus.createEvent(EventTypes.playerAdvanced, {
+      tournamentId,
+      matchId,
+      winnerId: data.winnerId,
+      round: match.round,
+    });
+
+    const eventData = JSON.stringify({
+      type: EventTypes.playerAdvanced,
+      payload: {
+        tournamentId,
+        matchId,
+        winnerId: data.winnerId,
+        round: match.round,
+      },
+    });
+    eventBus.createEvent(EventTypes.sseNotification, eventData);
+
+    // Check if round is complete
+    this.checkRoundCompletion(tournamentId, match.round);
+
     // Check if tournament is complete (final match has winner)
-    const finalMatch = draw.matches.find((m) => m.round === "F" && m.winnerId);
+    const finalMatch = draw.matches.find(
+      (m) => m.round === RoundTypeEnum.F && m.winnerId,
+    );
     if (finalMatch) {
       this.updateTournamentStatus(tournamentId, TournamentStatus.Completed);
+
+      eventBus.createEvent(EventTypes.tournamentCompleted, {
+        tournamentId,
+        winnerId: finalMatch.winnerId,
+      });
+
+      const tournamentEventData = JSON.stringify({
+        type: EventTypes.tournamentCompleted,
+        payload: {
+          tournamentId,
+          winnerId: finalMatch.winnerId,
+        },
+      });
+      eventBus.createEvent(EventTypes.sseNotification, tournamentEventData);
     }
 
     return match;
+  }
+
+  /**
+   * Check if all matches in a round are complete
+   */
+  private checkRoundCompletion(tournamentId: string, round: RoundTypeEnum) {
+    const draw = this.getDraw(tournamentId);
+    const roundMatches = draw.matches.filter((m) => m.round === round);
+    const allComplete = roundMatches.every((m) => m.winnerId);
+
+    if (allComplete) {
+      eventBus.createEvent(EventTypes.roundCompleted, {
+        tournamentId,
+        round,
+      });
+
+      const eventData = JSON.stringify({
+        type: EventTypes.roundCompleted,
+        payload: {
+          tournamentId,
+          round,
+        },
+      });
+      eventBus.createEvent(EventTypes.sseNotification, eventData);
+    }
   }
 
   /**
