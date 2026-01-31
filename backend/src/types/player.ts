@@ -1,7 +1,9 @@
 export interface Player {
+  id: string;
   name: string;
   status: string;
   rank: string;
+  seed?: number;
 }
 export interface PlayerWithGameStatus extends Player {
   gameStatus: string;
