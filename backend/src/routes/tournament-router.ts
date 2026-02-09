@@ -2,6 +2,14 @@ import { Response, Request, Router } from "express";
 import { drawController } from "../controllers/draw-controller";
 import { asyncHandler } from "../util";
 import { TournamentStatus, SurfaceType, DrawSize, MatchType } from "../types";
+import {
+  createTournamentValidator,
+  handleValidationErrors,
+  CreateTournamentRequest,
+  generateDrawValidator,
+  GenerateDrawRequest,
+} from "../validators/tournament-validator";
+import { getMatchingPlayers, initialPlayers } from "../data/players.data";
 
 const router = Router();
 
@@ -23,41 +31,33 @@ router.get(
  */
 router.post(
   "/",
-  asyncHandler(async (req: Request, res: Response) => {
-    const {
-      name,
-      location,
-      startDate,
-      endDate,
-      surfaceType,
-      drawSize,
-      matchType,
-    } = req.body;
+  createTournamentValidator,
+  handleValidationErrors,
+  asyncHandler(
+    async (req: Request<{}, {}, CreateTournamentRequest>, res: Response) => {
+      const {
+        name,
+        location,
+        startDate,
+        endDate,
+        surfaceType,
+        drawSize,
+        matchType,
+      } = req.body;
 
-    // Validate required fields
-    if (
-      !name ||
-      !location ||
-      !startDate ||
-      !endDate ||
-      !surfaceType ||
-      !drawSize
-    ) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+      const tournament = drawController.createTournament({
+        name,
+        location,
+        startDate,
+        endDate,
+        surfaceType: surfaceType as SurfaceType,
+        drawSize: drawSize as DrawSize,
+        matchType: (matchType as MatchType) || MatchType.Singles,
+      });
 
-    const tournament = drawController.createTournament({
-      name,
-      location,
-      startDate,
-      endDate,
-      surfaceType: surfaceType as SurfaceType,
-      drawSize: drawSize as DrawSize,
-      matchType: (matchType as MatchType) || MatchType.Singles,
-    });
-
-    res.status(201).json({ data: tournament });
-  }),
+      res.status(201).json({ data: tournament });
+    },
+  ),
 );
 
 /**
@@ -100,17 +100,24 @@ router.patch(
  */
 router.post(
   "/:id/draw",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { players } = req.body;
+  generateDrawValidator,
+  handleValidationErrors,
+  asyncHandler(
+    async (
+      req: Request<{ id: string }, {}, GenerateDrawRequest>,
+      res: Response,
+    ) => {
+      const { players } = req.body;
 
-    if (!players || !Array.isArray(players) || players.length === 0) {
-      return res.status(400).json({ error: "Players array is required" });
-    }
+      const matchedPlayers = getMatchingPlayers(players, initialPlayers);
 
-    const draw = drawController.generateDraw(req.params.id, { players });
+      const draw = drawController.generateDraw(req.params.id, {
+        players: matchedPlayers,
+      });
 
-    res.status(201).json({ data: draw });
-  }),
+      res.status(201).json({ data: draw });
+    },
+  ),
 );
 
 /**

@@ -1,4 +1,4 @@
-import { PlayerWithGameStatus } from "../types";
+import { Player, PlayerWithGameStatus } from "../types";
 
 export const initialPlayers: PlayerWithGameStatus[] = [
   {
@@ -74,3 +74,21 @@ export const initialPlayers: PlayerWithGameStatus[] = [
     court: "Court 8",
   },
 ];
+
+export const getMatchingPlayers = (
+  drawEntries: { id: string; seed?: number }[],
+  allPlayers: PlayerWithGameStatus[],
+): Player[] => {
+  const matchingPlayers: Player[] = [];
+  drawEntries.map((entry) => {
+    return allPlayers.map((player) => {
+      if (player.id === entry.id) {
+        matchingPlayers.push({
+          ...player,
+          seed: entry.seed,
+        });
+      }
+    });
+  });
+  return matchingPlayers;
+};

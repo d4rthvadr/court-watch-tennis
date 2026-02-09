@@ -30,6 +30,10 @@ export class BracketBuilder {
       const player1 = drawPositions.get(i);
       const player2 = drawPositions.get(i + 1);
 
+      if (!player1 && !player2) {
+        continue; // Skip if both positions are empty (shouldn't happen)
+      }
+
       const matchId = uuidv4();
       currentMatchIds.push(matchId);
 

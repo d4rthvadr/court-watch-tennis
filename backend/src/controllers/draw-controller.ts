@@ -33,7 +33,22 @@ interface UpdateMatchResultRequest {
 }
 
 class DrawController {
-  private tournaments: Map<string, Tournament> = new Map();
+  private tournaments: Map<string, Tournament> = new Map([
+    [
+      "2c6085f1-3393-4349-9f38-d378542a09f4",
+      {
+        id: "2c6085f1-3393-4349-9f38-d378542a09f4",
+        name: "2026 tournament",
+        location: "Dome Tennis Club",
+        startDate: "2026-02-02T14:07:56.545Z",
+        endDate: "2026-02-28T14:07:56.545Z",
+        surfaceType: SurfaceType.Clay,
+        drawSize: DrawSize.Eight,
+        status: TournamentStatus.Upcoming,
+        matchType: MatchType.Singles,
+      },
+    ],
+  ]);
   private draws: Map<string, DrawStructure> = new Map();
 
   /**
@@ -43,9 +58,6 @@ class DrawController {
     return Array.from(this.tournaments.values());
   }
 
-  /**
-   * Get tournament by ID
-   */
   findTournament(id: string): Tournament {
     const tournament = this.tournaments.get(id);
     if (!tournament) {
@@ -87,8 +99,17 @@ class DrawController {
   /**
    * Generate draw for a tournament
    */
-  generateDraw(tournamentId: string, data: GenerateDrawRequest): DrawStructure {
+  generateDraw(
+    tournamentId: string,
+    data: Omit<GenerateDrawRequest, "name">,
+  ): DrawStructure {
     const tournament = this.findTournament(tournamentId);
+
+    if (tournament.status !== TournamentStatus.Upcoming) {
+      throw new Error(
+        `Cannot generate draw for tournament in status ${tournament.status}`,
+      );
+    }
 
     // Check if draw already exists
     if (this.draws.has(tournamentId)) {
