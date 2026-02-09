@@ -1,6 +1,11 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
-import { gameRouter, playerRouter, sseRouter } from "./routes";
+import {
+  gameRouter,
+  playerRouter,
+  sseRouter,
+  tournamentRouter,
+} from "./routes";
 import { HttpError, InternalServerError } from "./errors";
 
 const app = express();
@@ -12,9 +17,10 @@ app.get("/health", (_, res: Response) => {
   res.status(200).send("OK\n");
 });
 
-app.use("/games", gameRouter);
-app.use("/players", playerRouter);
-app.use("/events", sseRouter);
+app.use("/api/games", gameRouter);
+app.use("/api/players", playerRouter);
+app.use("/api/tournaments", tournamentRouter);
+app.use("/api/events", sseRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Endpoint not found" });

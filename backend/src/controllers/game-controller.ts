@@ -1,36 +1,17 @@
 import { NotFoundError } from "../errors";
-import { Game } from "../types";
-
-const initialGames: Game[] = [
-  {
-    id: "game-1",
-    name: "Match 1",
-    status: "Scheduled",
-    startTime: "2024-07-01T10:00:00Z",
-    endTime: "2024-07-01T12:00:00Z",
-    player_one_id: "player-1",
-    player_two_id: "player-2",
-    courtId: "court-1",
-  },
-  {
-    id: "game-2",
-    name: "Match 2",
-    status: "Ongoing",
-    startTime: "2024-07-01T12:30:00Z",
-    endTime: "",
-    player_one_id: "player-3",
-    player_two_id: "player-4",
-    courtId: "court-2",
-  },
-];
+import { Game, GameStatus, EventTypes } from "../types";
+import { initialGames } from "../data/games.data";
+import { eventBus } from "../event-bus";
 
 class GameController {
   games: Game[] = initialGames;
+
   findAll() {
-    return initialGames;
+    return this.games;
   }
+
   find(id: string): Game | undefined {
-    const game = initialGames.find((game) => game.id === id);
+    const game = this.games.find((game) => game.id === id);
 
     if (!game) {
       throw new NotFoundError(`Game not found with id: ${id}`);
@@ -46,7 +27,49 @@ class GameController {
       throw new NotFoundError(`Game already exists with id: ${game.id}`);
     }
 
-    this.games = [...matchingGames, game];
+    this.games = [...this.games, game];
+  }
+
+  /**
+   * Update an existing game
+   */
+  update(id: string, updates: Partial<Game>): Game {
+    const gameIndex = this.games.findIndex((g) => g.id === id);
+
+    if (gameIndex === -1) {
+      throw new NotFoundError(`Game not found with id: ${id}`);
+    }
+
+    const currentGame = this.games[gameIndex];
+    const updatedGame = { ...currentGame, ...updates };
+
+    this.games[gameIndex] = updatedGame;
+
+    // Emit event if match is completed
+    if (
+      updates.status === GameStatus.Completed &&
+      currentGame.status !== GameStatus.Completed
+    ) {
+      eventBus.createEvent(EventTypes.matchCompleted, {
+        gameId: id,
+        game: updatedGame,
+      });
+
+      const eventData = JSON.stringify({
+        type: EventTypes.matchCompleted,
+        payload: updatedGame,
+      });
+      eventBus.createEvent(EventTypes.sseNotification, eventData);
+    }
+
+    return updatedGame;
+  }
+
+  /**
+   * Update game status
+   */
+  updateStatus(id: string, status: GameStatus): Game {
+    return this.update(id, { status });
   }
 
   delete(id: string) {

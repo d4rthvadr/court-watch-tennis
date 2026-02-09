@@ -1,4 +1,9 @@
-export type GameStatus = "Scheduled" | "Ongoing" | "Completed" | "Cancelled";
+export enum GameStatus {
+  Scheduled = "Scheduled",
+  Ongoing = "Ongoing",
+  Completed = "Completed",
+  Cancelled = "Cancelled",
+}
 
 export interface Game {
   id?: string;

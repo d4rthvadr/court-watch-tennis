@@ -9,23 +9,35 @@ router.get("/", (_, res: Response) => {
   res.status(200).json({ data: players });
 });
 
+router.get("/seeded", (_, res: Response) => {
+  const players = playerController.getSeededPlayers();
+  res.status(200).json({ data: players });
+});
+
+router.get("/tournament", (_, res: Response) => {
+  const players = playerController.getPlayersForTournament();
+  res.status(200).json({ data: players });
+});
+
 router.post(
   "/players",
   asyncHandler((req: Request, res: Response) => {
     try {
-      const { name, status, rank, gameStatus, court } = req.body;
+      const { id, name, status, rank, seed, gameStatus, court } = req.body;
 
-      if (!name || !status || !rank || !gameStatus || !court) {
+      if (!id || !name || !status || !rank || !gameStatus || !court) {
         return res.status(400).json({
           error:
-            "Missing required fields: name, status, rank, gameStatus, court",
+            "Missing required fields: id, name, status, rank, gameStatus, court",
         });
       }
 
       const newPlayer = {
+        id,
         name,
         status,
         rank,
+        seed,
         gameStatus,
         court,
       };
@@ -40,7 +52,7 @@ router.post(
       console.error("Error creating player:", error);
       res.status(500).json({ error: "Failed to create player" });
     }
-  })
+  }),
 );
 
 export const playerRouter = router;
