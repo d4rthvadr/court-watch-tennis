@@ -1,32 +1,40 @@
-# CourtWatch — Multi‑Court Tennis Score Tracking
+# CourtWatch Tennis — Tournament Draw Engine
 
-A minimal MVP to follow multiple tennis matches happening simultaneously at a single venue. Built for tournament attendees, friends/family, and participants who need near‑real‑time, court‑by‑court updates.
+A simple, automated tournament draw and match progression system for tennis competitions. Eliminates manual bracket management by providing digital draw generation, automated match progression, and real-time tournament tracking.
 
-> Source code scaffolding is pending. This README reflects the MVP plan from the Technical Requirements.
+## Problem We Solve
 
-## MVP Scope
+Tournament organizers traditionally manage draws and match progression by hand—creating brackets on paper, manually updating results, and tracking player advancement through rounds. CourtWatch automates this entire process, making tournament management efficient and accessible.
 
-- User authentication & profiles
-- Live score dashboard (multi‑court, near‑real‑time)
-- Tournament/event selection (browse, search, quick switch)
-- Player following with basic notifications
-- Simple leaderboard view
-- Match detail view
+## Core Features
 
-## Technical Stack (MVP)
+**For Administrators:**
 
-- Frontend: React 18 + TypeScript, Zustand, Tailwind CSS, Socket.io client, React Router, React Hook Form + Zod
-- Backend: Node.js (Express), PostgreSQL 16, Redis 7, Socket.io, Prisma, JWT + bcrypt, Zod
-- Infra: Single‑server deploy (Railway/Render/DigitalOcean), managed Postgres + Redis, Cloudflare (CDN), Sentry (errors)
-- Realtime: WebSocket with 15–30s polling fallback
+- Create and manage tournaments (dates, location, surface type, draw size)
+- Generate tournament draws with seeded and unseeded players
+- Update match results and automatically progress winners
+- Manage tournament status (Upcoming → Active → Completed)
+
+**For Players & Guests:**
+
+- View tournament draws and brackets
+- Track match fixtures and schedules
+- See live rankings and leaderboards
+- Follow match results and progression through rounds
+
+## Technical Stack
+
+- **Backend:** Node.js, Express, TypeScript, Prisma ORM, PostgreSQL
+- **Frontend:** SvelteKit, TypeScript, Tailwind CSS
+- **Validation:** Express-validator for API request validation
+- **Real-time:** Server-Sent Events (SSE) for live updates
 
 ## Prerequisites
 
-Before running the application, ensure you have the following installed:
-
 - **Node.js** (v20 or higher)
-- **npm** or **yarn** (for package management)
+- **npm** (for package management)
 - **Docker** and **Docker Compose** (for containerized deployment)
+- **PostgreSQL** (for production database)
 
 ## Getting Started
 
@@ -91,12 +99,58 @@ docker-compose up --build client
 - **Backend API:** http://localhost:3030/api
 - **Traefik Dashboard:** http://localhost:8080
 
+## Project Structure
+
+```
+backend/          # Express API server
+  src/
+    controllers/  # Business logic
+    routes/       # API endpoints
+    services/     # Draw generation & match progression
+    validators/   # Request validation
+    types/        # TypeScript definitions
+  prisma/         # Database schema & migrations
+
+client/           # SvelteKit frontend
+  src/
+    routes/       # Pages & layouts
+    lib/          # Components & utilities
+```
+
+## API Overview
+
+### Tournaments
+
+- `POST /api/tournaments` - Create tournament
+- `GET /api/tournaments` - List all tournaments
+- `GET /api/tournaments/:id` - Get tournament details
+- `PATCH /api/tournaments/:id/status` - Update tournament status
+
+### Draw Management
+
+- `POST /api/tournaments/:id/draw` - Generate tournament draw
+- `GET /api/tournaments/:id/draw` - View tournament draw
+- `GET /api/tournaments/:id/matches` - Get all matches
+- `PATCH /api/tournaments/:tournamentId/matches/:matchId` - Update match result
+
+### Players
+
+- `POST /api/players` - Create player
+- `GET /api/players` - List all players
+
 ## Status & Next Steps
 
-- Phase: MVP planning
-- Next: Scaffold backend/frontend per TRD, set up CI, and add local dev tooling (Docker Compose, Prisma, etc.)
+- ✅ Core API with validation
+- ✅ Prisma ORM setup
+- ✅ Draw generation engine
+- ✅ Match progression system
+- 🔄 Database migrations
+- 📋 Frontend implementation
+- 📋 Authentication & authorization
 
 ## Documentation
+
+See [docs/](docs/) for detailed architecture and requirements.
 
 - Technical Requirements (TRD): `docs/technical_requirements.md`
 
