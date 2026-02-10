@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum TournamentStatus {
+  Upcoming
+  Active
+  Completed
+}
+
+enum SurfaceType {
+  Hard
+  Clay
+  Grass
+  Carpet
+}
+
+enum MatchType {
+  Singles
+  Doubles
+}
+
+enum MatchStatus {
+  Scheduled
+  Ongoing
+  Completed
+  Cancelled
+}
+
+// Player model
+model Player {
+  id        String   @id @default(uuid())
+  name      String
+  status    String
+  rank      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  gamesAsPlayerOne Game[]      @relation("PlayerOneGames")
+  gamesAsPlayerTwo Game[]      @relation("PlayerTwoGames")
+  drawEntries      DrawEntry[]
+  matchesAsPlayer1 DrawMatch[] @relation("Player1Matches")
+  matchesAsPlayer2 DrawMatch[] @relation("Player2Matches")
+  matchesWon       DrawMatch[] @relation("WinnerMatches")
+
+  @@map("players")
+}
+
+// Tournament model
+model Tournament {
+  id          String           @id @default(uuid())
+  name        String
+  location    String
+  startDate   String
+  endDate     String
+  surfaceType SurfaceType      @default(Hard)
+  drawSize    Int
+  status      TournamentStatus @default(Upcoming)
+  matchType   MatchType        @default(Singles)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  drawEntries DrawEntry[]
+  drawMatches DrawMatch[]
+
+  @@map("tournaments")
+}
+
+// Game model (for regular matches/games)
+model Game {
+  id          String   @id @default(uuid())
+  name        String?
+  status      String
+  startTime   String?
+  endTime     String?
+  playerOneId String   @map("player_one_id")
+  playerTwoId String   @map("player_two_id")
+  courtId     String   @map("court_id")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  playerOne Player @relation("PlayerOneGames", fields: [playerOneId], references: [id], onDelete: Cascade)
+  playerTwo Player @relation("PlayerTwoGames", fields: [playerTwoId], references: [id], onDelete: Cascade)
+
+  @@map("games")
+}
+
+// Draw Entry model
+model DrawEntry {
+  id           String   @id @default(uuid())
+  tournamentId String   @map("tournament_id")
+  position     Int
+  playerId     String?  @map("player_id")
+  seed         Int?
+  round        String
+  matchId      String?  @map("match_id")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player     Player?    @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@index([tournamentId])
+  @@index([playerId])
+  @@map("draw_entries")
+}
+
+// Draw Match model
+model DrawMatch {
+  id           String      @id @default(uuid())
+  tournamentId String      @map("tournament_id")
+  round        String
+  position     Int
+  player1Id    String?     @map("player1_id")
+  player2Id    String?     @map("player2_id")
+  winnerId     String?     @map("winner_id")
+  nextMatchId  String?     @map("next_match_id")
+  status       MatchStatus @default(Scheduled)
+  courtId      String?     @map("court_id")
+  startTime    String?     @map("start_time")
+  endTime      String?     @map("end_time")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player1    Player?    @relation("Player1Matches", fields: [player1Id], references: [id], onDelete: SetNull)
+  player2    Player?    @relation("Player2Matches", fields: [player2Id], references: [id], onDelete: SetNull)
+  winner     Player?    @relation("WinnerMatches", fields: [winnerId], references: [id], onDelete: SetNull)
+
+  @@index([tournamentId])
+  @@index([player1Id])
+  @@index([player2Id])
+  @@index([winnerId])
+  @@map("draw_matches")
+}
