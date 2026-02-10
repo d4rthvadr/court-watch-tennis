@@ -52,20 +52,22 @@ export const createTournamentValidator = [
     .withMessage("End date cannot be empty")
     .isISO8601()
     .withMessage("End date must be a valid date"),
-
   body("surfaceType")
     .exists()
     .withMessage("Surface type is required")
-    .notEmpty()
-    .withMessage("Surface type cannot be empty")
-    .isString()
-    .withMessage("Surface type must be a string"),
-
+    .isIn(Object.values(SurfaceType))
+    .withMessage(
+      `Surface type must be one of: ${Object.values(SurfaceType).join(", ")}`,
+    ),
   body("drawSize")
     .exists()
     .withMessage("Draw size is required")
-    .notEmpty()
-    .withMessage("Draw size cannot be empty"),
+    .isInt()
+    .withMessage("Draw size must be an integer")
+    .isIn(Object.values(DrawSize))
+    .withMessage(
+      `Draw size must be one of: ${Object.values(DrawSize).join(", ")}`,
+    ),
 ];
 
 /**

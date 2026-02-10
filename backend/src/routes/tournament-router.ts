@@ -20,7 +20,7 @@ const router = Router();
 router.get(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
-    const tournaments = drawController.findAllTournaments();
+    const tournaments = await drawController.findAllTournaments();
     res.status(200).json({ data: tournaments });
   }),
 );
@@ -45,7 +45,7 @@ router.post(
         matchType,
       } = req.body;
 
-      const tournament = drawController.createTournament({
+      const tournament = await drawController.createTournament({
         name,
         location,
         startDate,
@@ -67,7 +67,7 @@ router.post(
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const tournament = drawController.findTournament(req.params.id);
+    const tournament = await drawController.findTournament(req.params.id);
     res.status(200).json({ data: tournament });
   }),
 );
@@ -85,7 +85,7 @@ router.patch(
       return res.status(400).json({ error: "Status is required" });
     }
 
-    const tournament = drawController.updateTournamentStatus(
+    const tournament = await drawController.updateTournamentStatus(
       req.params.id,
       status as TournamentStatus,
     );
@@ -111,7 +111,7 @@ router.post(
 
       const matchedPlayers = getMatchingPlayers(players, initialPlayers);
 
-      const draw = drawController.generateDraw(req.params.id, {
+      const draw = await drawController.generateDraw(req.params.id, {
         players: matchedPlayers,
       });
 
@@ -127,7 +127,7 @@ router.post(
 router.get(
   "/:id/draw",
   asyncHandler(async (req: Request, res: Response) => {
-    const draw = drawController.getDraw(req.params.id);
+    const draw = await drawController.getDraw(req.params.id);
     res.status(200).json({ data: draw });
   }),
 );
@@ -143,12 +143,12 @@ router.get(
 
     let matches;
     if (round) {
-      matches = drawController.getMatchesByRound(
+      matches = await drawController.getMatchesByRound(
         req.params.id,
         round as string,
       );
     } else {
-      matches = drawController.getMatches(req.params.id);
+      matches = await drawController.getMatches(req.params.id);
     }
 
     res.status(200).json({ data: matches });
@@ -168,7 +168,7 @@ router.patch(
       return res.status(400).json({ error: "Winner ID is required" });
     }
 
-    const match = drawController.updateMatchResult(
+    const match = await drawController.updateMatchResult(
       req.params.tournamentId,
       req.params.matchId,
       { winnerId },
