@@ -1,4 +1,25 @@
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=courtwatch
+      - POSTGRES_PASSWORD=courtwatch
+      - POSTGRES_DB=courtwatch
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - court-watch-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courtwatch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Traefik Load Balancer & Reverse Proxy
   traefik:
     image: traefik:v2.11
@@ -24,6 +45,10 @@ services:
     container_name: backend
     environment:
       - PORT=4001
+      - DATABASE_URL=postgresql://courtwatch:courtwatch@postgres:5432/courtwatch?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
@@ -56,3 +81,7 @@ services:
 networks:
   court-watch-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
