@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { DrawMatch, RoundTypeEnum, GameStatus } from "../types";
+import { DrawMatch, RoundTypeEnum, GameStatus } from "../../types";
 
 interface SeededPlayer {
   id: string;

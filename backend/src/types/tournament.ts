@@ -20,8 +20,8 @@ export enum DrawSize {
 }
 
 export enum MatchType {
-  Singles = "singles",
-  Doubles = "doubles",
+  Singles = "Singles",
+  Doubles = "Doubles",
 }
 
 export interface Tournament {

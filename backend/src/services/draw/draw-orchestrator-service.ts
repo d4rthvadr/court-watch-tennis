@@ -5,7 +5,7 @@ import {
   DrawStructure,
   RoundTypeEnum,
   DrawSize,
-} from "../types";
+} from "../../types";
 import { seedingStrategy } from "./seeding-strategy";
 import { bracketBuilder } from "./bracket-builder";
 import { matchProgressionService } from "./match-progression";
@@ -20,7 +20,7 @@ interface SeededPlayer {
  * Main orchestrator for tournament draw generation and management
  * Coordinates seeding, bracket building, and match progression
  */
-export class DrawService {
+export class DrawOrchestratorService {
   /**
    * Generate a single-elimination draw for a tournament
    * @param tournamentId - The tournament ID
@@ -130,4 +130,4 @@ export class DrawService {
 }
 
 // Export singleton instance
-export const drawService = new DrawService();
+export const drawOrchestratorService = new DrawOrchestratorService();

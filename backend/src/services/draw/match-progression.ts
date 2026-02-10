@@ -1,4 +1,4 @@
-import { DrawMatch, GameStatus } from "../types";
+import { DrawMatch, GameStatus } from "../../types";
 
 /**
  * Handles match progression logic and winner advancement

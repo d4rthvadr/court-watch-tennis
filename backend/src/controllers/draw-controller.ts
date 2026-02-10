@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import { NotFoundError } from "../errors";
 import {
   Tournament,
@@ -11,9 +10,22 @@ import {
   EventTypes,
   RoundTypeEnum,
 } from "../types";
-import { drawService } from "../services/draw-service";
+import { drawOrchestratorService } from "../services/draw/draw-orchestrator-service";
 import { eventBus } from "../event-bus";
+import { tournamentRepository, drawRepository } from "../models/repositories";
+import { TournamentModel } from "../models/tournament";
 
+const toTournamentDTO = (t: TournamentModel): Tournament => ({
+  id: t.id!,
+  name: t.name,
+  location: t.location,
+  startDate: t.startDate,
+  endDate: t.endDate,
+  surfaceType: t.surfaceType,
+  drawSize: t.drawSize,
+  status: t.status,
+  matchType: t.matchType,
+});
 interface CreateTournamentRequest {
   name: string;
   location: string;
@@ -33,77 +45,69 @@ interface UpdateMatchResultRequest {
 }
 
 class DrawController {
-  private tournaments: Map<string, Tournament> = new Map([
-    [
-      "2c6085f1-3393-4349-9f38-d378542a09f4",
-      {
-        id: "2c6085f1-3393-4349-9f38-d378542a09f4",
-        name: "2026 tournament",
-        location: "Dome Tennis Club",
-        startDate: "2026-02-02T14:07:56.545Z",
-        endDate: "2026-02-28T14:07:56.545Z",
-        surfaceType: SurfaceType.Clay,
-        drawSize: DrawSize.Eight,
-        status: TournamentStatus.Upcoming,
-        matchType: MatchType.Singles,
-      },
-    ],
-  ]);
-  private draws: Map<string, DrawStructure> = new Map();
-
   /**
    * Get all tournaments
    */
-  findAllTournaments(): Tournament[] {
-    return Array.from(this.tournaments.values());
+  async findAllTournaments(): Promise<Tournament[]> {
+    const tournaments = await tournamentRepository.findAll();
+
+    console.log("Fetched tournaments:", tournaments[0].id); // Debug log
+
+    // TODO: Implement pagination and filtering
+    return tournaments.map(toTournamentDTO);
   }
 
-  findTournament(id: string): Tournament {
-    const tournament = this.tournaments.get(id);
+  async findTournament(id: string): Promise<Tournament> {
+    const tournament = await tournamentRepository.findById(id);
     if (!tournament) {
       throw new NotFoundError(`Tournament not found with id: ${id}`);
     }
-    return tournament;
+    return toTournamentDTO(tournament);
   }
 
   /**
    * Create a new tournament
    */
-  createTournament(data: CreateTournamentRequest): Tournament {
-    const tournament: Tournament = {
-      id: uuidv4(),
-      name: data.name,
-      location: data.location,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      surfaceType: data.surfaceType,
-      drawSize: data.drawSize,
-      status: TournamentStatus.Upcoming,
-      matchType: data.matchType,
-    };
-
-    this.tournaments.set(tournament.id, tournament);
-    return tournament;
+  async createTournament(data: CreateTournamentRequest): Promise<Tournament> {
+    const tournament = await tournamentRepository.save(
+      new TournamentModel({
+        name: data.name,
+        location: data.location,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        surfaceType: data.surfaceType,
+        drawSize: data.drawSize,
+        status: TournamentStatus.Upcoming,
+        matchType: data.matchType,
+      }),
+    );
+    return toTournamentDTO(tournament);
   }
 
   /**
    * Update tournament status
    */
-  updateTournamentStatus(id: string, status: TournamentStatus): Tournament {
-    const tournament = this.findTournament(id);
+  async updateTournamentStatus(
+    id: string,
+    status: TournamentStatus,
+  ): Promise<Tournament> {
+    const tournament = await tournamentRepository.findById(id);
+    if (!tournament) {
+      throw new NotFoundError(`Tournament not found with id: ${id}`);
+    }
     tournament.status = status;
-    this.tournaments.set(id, tournament);
-    return tournament;
+    const updatedTournament = await tournamentRepository.save(tournament);
+    return toTournamentDTO(updatedTournament);
   }
 
   /**
    * Generate draw for a tournament
    */
-  generateDraw(
+  async generateDraw(
     tournamentId: string,
     data: Omit<GenerateDrawRequest, "name">,
-  ): DrawStructure {
-    const tournament = this.findTournament(tournamentId);
+  ): Promise<DrawStructure> {
+    const tournament = await this.findTournament(tournamentId);
 
     if (tournament.status !== TournamentStatus.Upcoming) {
       throw new Error(
@@ -112,22 +116,23 @@ class DrawController {
     }
 
     // Check if draw already exists
-    if (this.draws.has(tournamentId)) {
+    const existingDraw = await drawRepository.findByTournamentId(tournamentId);
+    if (existingDraw) {
       throw new Error(`Draw already exists for tournament ${tournamentId}`);
     }
 
-    // Generate the draw using DrawService
-    const draw = drawService.generateDraw(
+    // Generate the draw using DrawOrchestratorService
+    const draw = drawOrchestratorService.generateDraw(
       tournamentId,
       data.players,
       tournament.drawSize,
     );
 
     // Store the draw
-    this.draws.set(tournamentId, draw);
+    await drawRepository.create(draw);
 
     // Update tournament status to Active
-    this.updateTournamentStatus(tournamentId, TournamentStatus.Active);
+    await this.updateTournamentStatus(tournamentId, TournamentStatus.Active);
 
     return draw;
   }
@@ -135,8 +140,8 @@ class DrawController {
   /**
    * Get draw for a tournament
    */
-  getDraw(tournamentId: string): DrawStructure {
-    const draw = this.draws.get(tournamentId);
+  async getDraw(tournamentId: string): Promise<DrawStructure> {
+    const draw = await drawRepository.findByTournamentId(tournamentId);
     if (!draw) {
       throw new NotFoundError(`Draw not found for tournament ${tournamentId}`);
     }
@@ -146,12 +151,12 @@ class DrawController {
   /**
    * Update match result and advance winner
    */
-  updateMatchResult(
+  async updateMatchResult(
     tournamentId: string,
     matchId: string,
     data: UpdateMatchResultRequest,
-  ): DrawMatch {
-    const draw = this.getDraw(tournamentId);
+  ): Promise<DrawMatch> {
+    const draw = await this.getDraw(tournamentId);
 
     // Find the match
     const match = draw.matches.find((m) => m.id === matchId);
@@ -159,16 +164,15 @@ class DrawController {
       throw new NotFoundError(`Match not found with id: ${matchId}`);
     }
 
-    // Advance winner using DrawService
-    const updatedMatches = drawService.advanceWinner(
+    // Advance winner using DrawOrchestratorService
+    const updatedMatches = drawOrchestratorService.advanceWinner(
       draw.matches,
       matchId,
       data.winnerId,
     );
 
-    // Update the draw
-    draw.matches = updatedMatches;
-    this.draws.set(tournamentId, draw);
+    // Update the draw in database
+    await drawRepository.updateMatch(tournamentId, matchId, data.winnerId);
 
     // Emit player advanced event
     eventBus.createEvent(EventTypes.playerAdvanced, {
@@ -190,14 +194,17 @@ class DrawController {
     eventBus.createEvent(EventTypes.sseNotification, eventData);
 
     // Check if round is complete
-    this.checkRoundCompletion(tournamentId, match.round);
+    await this.checkRoundCompletion(tournamentId, match.round);
 
     // Check if tournament is complete (final match has winner)
-    const finalMatch = draw.matches.find(
+    const finalMatch = updatedMatches.find(
       (m) => m.round === RoundTypeEnum.F && m.winnerId,
     );
     if (finalMatch) {
-      this.updateTournamentStatus(tournamentId, TournamentStatus.Completed);
+      await this.updateTournamentStatus(
+        tournamentId,
+        TournamentStatus.Completed,
+      );
 
       eventBus.createEvent(EventTypes.tournamentCompleted, {
         tournamentId,
@@ -220,9 +227,14 @@ class DrawController {
   /**
    * Check if all matches in a round are complete
    */
-  private checkRoundCompletion(tournamentId: string, round: RoundTypeEnum) {
-    const draw = this.getDraw(tournamentId);
-    const roundMatches = draw.matches.filter((m) => m.round === round);
+  private async checkRoundCompletion(
+    tournamentId: string,
+    round: RoundTypeEnum,
+  ) {
+    const roundMatches = await drawRepository.getMatchesByRound(
+      tournamentId,
+      round,
+    );
     const allComplete = roundMatches.every((m) => m.winnerId);
 
     if (allComplete) {
@@ -245,17 +257,18 @@ class DrawController {
   /**
    * Get all matches for a tournament
    */
-  getMatches(tournamentId: string): DrawMatch[] {
-    const draw = this.getDraw(tournamentId);
-    return draw.matches;
+  async getMatches(tournamentId: string): Promise<DrawMatch[]> {
+    return await drawRepository.getMatches(tournamentId);
   }
 
   /**
    * Get matches by round
    */
-  getMatchesByRound(tournamentId: string, round: string): DrawMatch[] {
-    const draw = this.getDraw(tournamentId);
-    return draw.matches.filter((m) => m.round === round);
+  async getMatchesByRound(
+    tournamentId: string,
+    round: string,
+  ): Promise<DrawMatch[]> {
+    return await drawRepository.getMatchesByRound(tournamentId, round);
   }
 }
 
