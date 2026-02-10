@@ -1,40 +1,15 @@
 import { NotFoundError } from "../errors";
 import {
-  Tournament,
   DrawStructure,
   DrawMatch,
   TournamentStatus,
-  SurfaceType,
-  DrawSize,
-  MatchType,
   EventTypes,
   RoundTypeEnum,
 } from "../types";
 import { drawOrchestratorService } from "../services/draw/draw-orchestrator-service";
 import { eventBus } from "../event-bus";
-import { tournamentRepository, drawRepository } from "../models/repositories";
-import { TournamentModel } from "../models/tournament";
-
-const toTournamentDTO = (t: TournamentModel): Tournament => ({
-  id: t.id!,
-  name: t.name,
-  location: t.location,
-  startDate: t.startDate,
-  endDate: t.endDate,
-  surfaceType: t.surfaceType,
-  drawSize: t.drawSize,
-  status: t.status,
-  matchType: t.matchType,
-});
-interface CreateTournamentRequest {
-  name: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-  surfaceType: SurfaceType;
-  drawSize: DrawSize;
-  matchType: MatchType;
-}
+import { drawRepository } from "../models/repositories";
+import { tournamentController } from "./tournament-controller";
 
 interface GenerateDrawRequest {
   players: Array<{ id: string; name: string; seed?: number }>;
@@ -46,68 +21,13 @@ interface UpdateMatchResultRequest {
 
 class DrawController {
   /**
-   * Get all tournaments
-   */
-  async findAllTournaments(): Promise<Tournament[]> {
-    const tournaments = await tournamentRepository.findAll();
-
-    console.log("Fetched tournaments:", tournaments[0].id); // Debug log
-
-    // TODO: Implement pagination and filtering
-    return tournaments.map(toTournamentDTO);
-  }
-
-  async findTournament(id: string): Promise<Tournament> {
-    const tournament = await tournamentRepository.findById(id);
-    if (!tournament) {
-      throw new NotFoundError(`Tournament not found with id: ${id}`);
-    }
-    return toTournamentDTO(tournament);
-  }
-
-  /**
-   * Create a new tournament
-   */
-  async createTournament(data: CreateTournamentRequest): Promise<Tournament> {
-    const tournament = await tournamentRepository.save(
-      new TournamentModel({
-        name: data.name,
-        location: data.location,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        surfaceType: data.surfaceType,
-        drawSize: data.drawSize,
-        status: TournamentStatus.Upcoming,
-        matchType: data.matchType,
-      }),
-    );
-    return toTournamentDTO(tournament);
-  }
-
-  /**
-   * Update tournament status
-   */
-  async updateTournamentStatus(
-    id: string,
-    status: TournamentStatus,
-  ): Promise<Tournament> {
-    const tournament = await tournamentRepository.findById(id);
-    if (!tournament) {
-      throw new NotFoundError(`Tournament not found with id: ${id}`);
-    }
-    tournament.status = status;
-    const updatedTournament = await tournamentRepository.save(tournament);
-    return toTournamentDTO(updatedTournament);
-  }
-
-  /**
    * Generate draw for a tournament
    */
   async generateDraw(
     tournamentId: string,
     data: Omit<GenerateDrawRequest, "name">,
   ): Promise<DrawStructure> {
-    const tournament = await this.findTournament(tournamentId);
+    const tournament = await tournamentController.findTournament(tournamentId);
 
     if (tournament.status !== TournamentStatus.Upcoming) {
       throw new Error(
@@ -132,7 +52,10 @@ class DrawController {
     await drawRepository.create(draw);
 
     // Update tournament status to Active
-    await this.updateTournamentStatus(tournamentId, TournamentStatus.Active);
+    await tournamentController.updateTournamentStatus(
+      tournamentId,
+      TournamentStatus.Active,
+    );
 
     return draw;
   }
@@ -201,7 +124,7 @@ class DrawController {
       (m) => m.round === RoundTypeEnum.F && m.winnerId,
     );
     if (finalMatch) {
-      await this.updateTournamentStatus(
+      await tournamentController.updateTournamentStatus(
         tournamentId,
         TournamentStatus.Completed,
       );

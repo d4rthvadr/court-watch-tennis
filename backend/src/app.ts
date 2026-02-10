@@ -5,6 +5,7 @@ import {
   playerRouter,
   sseRouter,
   tournamentRouter,
+  drawRouter,
 } from "./routes";
 import { HttpError, InternalServerError } from "./errors";
 
@@ -20,6 +21,7 @@ app.get("/health", (_, res: Response) => {
 app.use("/api/games", gameRouter);
 app.use("/api/players", playerRouter);
 app.use("/api/tournaments", tournamentRouter);
+app.use("/api/tournaments", drawRouter);
 app.use("/api/events", sseRouter);
 
 app.use((req, res) => {
