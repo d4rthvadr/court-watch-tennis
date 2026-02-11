@@ -2,6 +2,7 @@ import { NotFoundError } from "../errors";
 import {
   DrawStructure,
   DrawMatch,
+  DrawEntry,
   TournamentStatus,
   EventTypes,
   RoundTypeEnum,
@@ -10,6 +11,82 @@ import { drawOrchestratorService } from "./draw/draw-orchestrator-service";
 import { eventBus } from "../event-bus";
 import { drawRepository } from "../models/repositories";
 import { tournamentService } from "./tournament-service";
+import { DrawEntryModel, DrawMatchModel } from "../models/draw";
+import { DrawStructureModels } from "../models/repositories/DrawRepository";
+
+function toDrawEntryDTO(model: DrawEntryModel): DrawEntry {
+  return {
+    id: model.id,
+    tournamentId: model.tournamentId,
+    position: model.position,
+    playerId: model.playerId,
+    seed: model.seed,
+    round: model.round,
+    matchId: model.matchId,
+  };
+}
+
+function toDrawMatchDTO(model: DrawMatchModel): DrawMatch {
+  return {
+    id: model.id,
+    tournamentId: model.tournamentId,
+    round: model.round,
+    position: model.position,
+    player1Id: model.player1Id,
+    player2Id: model.player2Id,
+    winnerId: model.winnerId,
+    nextMatchId: model.nextMatchId,
+    status: model.status,
+    courtId: model.courtId,
+    startTime: model.startTime,
+    endTime: model.endTime,
+  };
+}
+
+function toDrawStructureDTO(models: DrawStructureModels): DrawStructure {
+  return {
+    tournamentId: models.tournamentId,
+    drawSize: models.drawSize,
+    entries: models.entries.map(toDrawEntryDTO),
+    matches: models.matches.map(toDrawMatchDTO),
+  };
+}
+
+function toDrawStructureModels(dto: DrawStructure): DrawStructureModels {
+  return {
+    tournamentId: dto.tournamentId,
+    drawSize: dto.drawSize,
+    entries: dto.entries.map(
+      (e) =>
+        new DrawEntryModel({
+          id: e.id,
+          tournamentId: e.tournamentId,
+          position: e.position,
+          playerId: e.playerId,
+          seed: e.seed,
+          round: e.round,
+          matchId: e.matchId,
+        }),
+    ),
+    matches: dto.matches.map(
+      (m) =>
+        new DrawMatchModel({
+          id: m.id,
+          tournamentId: m.tournamentId,
+          round: m.round,
+          position: m.position,
+          player1Id: m.player1Id,
+          player2Id: m.player2Id,
+          winnerId: m.winnerId,
+          nextMatchId: m.nextMatchId,
+          status: m.status,
+          courtId: m.courtId,
+          startTime: m.startTime,
+          endTime: m.endTime,
+        }),
+    ),
+  };
+}
 
 export interface GenerateDrawData {
   players: Array<{ id: string; name: string; seed?: number }>;
@@ -37,8 +114,9 @@ class DrawManagementService {
     }
 
     // Check if draw already exists
-    const existingDraw = await drawRepository.findByTournamentId(tournamentId);
-    if (existingDraw) {
+    const existingDrawModels =
+      await drawRepository.findByTournamentId(tournamentId);
+    if (existingDrawModels) {
       throw new Error(`Draw already exists for tournament ${tournamentId}`);
     }
 
@@ -56,8 +134,8 @@ class DrawManagementService {
       tournament.drawSize,
     );
 
-    // Store the draw
-    await drawRepository.create(draw);
+    // Store the draw (convert DTOs to models)
+    await drawRepository.create(toDrawStructureModels(draw));
 
     // Update tournament status to Active
     await tournamentService.updateTournamentStatus(
@@ -72,11 +150,11 @@ class DrawManagementService {
    * Get draw for a tournament
    */
   async getDraw(tournamentId: string): Promise<DrawStructure> {
-    const draw = await drawRepository.findByTournamentId(tournamentId);
-    if (!draw) {
+    const drawModels = await drawRepository.findByTournamentId(tournamentId);
+    if (!drawModels) {
       throw new NotFoundError(`Draw not found for tournament ${tournamentId}`);
     }
-    return draw;
+    return toDrawStructureDTO(drawModels);
   }
 
   /**
@@ -118,7 +196,14 @@ class DrawManagementService {
     );
 
     // Update the draw in database
-    await drawRepository.updateMatch(tournamentId, matchId, data.winnerId);
+    const updatedMatchModel = await drawRepository.updateMatch(
+      tournamentId,
+      matchId,
+      data.winnerId,
+    );
+    const updatedMatch = updatedMatchModel
+      ? toDrawMatchDTO(updatedMatchModel)
+      : match;
 
     // Emit player advanced event
     this.emitPlayerAdvancedEvent(
@@ -141,7 +226,8 @@ class DrawManagementService {
    * Get all matches for a tournament
    */
   async getMatches(tournamentId: string): Promise<DrawMatch[]> {
-    return await drawRepository.getMatches(tournamentId);
+    const matchModels = await drawRepository.getMatches(tournamentId);
+    return matchModels.map(toDrawMatchDTO);
   }
 
   /**
@@ -151,7 +237,11 @@ class DrawManagementService {
     tournamentId: string,
     round: string,
   ): Promise<DrawMatch[]> {
-    return await drawRepository.getMatchesByRound(tournamentId, round);
+    const matchModels = await drawRepository.getMatchesByRound(
+      tournamentId,
+      round,
+    );
+    return matchModels.map(toDrawMatchDTO);
   }
 
   /**
@@ -193,7 +283,7 @@ class DrawManagementService {
       tournamentId,
       round,
     );
-    const allComplete = roundMatches.every((m) => m.winnerId);
+    const allComplete = roundMatches.every((m: DrawMatch) => m.winnerId);
 
     if (allComplete) {
       eventBus.createEvent(EventTypes.roundCompleted, {

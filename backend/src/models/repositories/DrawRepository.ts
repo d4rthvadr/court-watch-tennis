@@ -1,16 +1,82 @@
-import {
-  DrawStructure,
-  DrawMatch,
-  DrawEntry,
-  RoundTypeEnum,
-  GameStatus,
-} from "../../types";
+import { RoundTypeEnum, GameStatus } from "../../types";
 import { Database } from "../../db/database";
+import { DrawEntryModel, DrawMatchModel } from "../draw";
+import {
+  DrawEntry as PrismaDrawEntry,
+  DrawMatch as PrismaDrawMatch,
+} from "../../../generated/prisma";
+import { convertNullToUndefined, convertToFamilyType } from "../util";
+
+/**
+ *  Map Prisma DrawEntry entity to DrawEntryModel
+ * @param entity Prisma DrawEntry entity or null
+ * @returns DrawEntryModel instance or null if input is null
+ * @param entity
+ */
+function mapToDrawEntry(entity: PrismaDrawEntry): DrawEntryModel;
+function mapToDrawEntry(entity: null): null;
+function mapToDrawEntry(entity: PrismaDrawEntry | null): DrawEntryModel | null;
+function mapToDrawEntry(entity: PrismaDrawEntry | null): DrawEntryModel | null {
+  if (!entity) {
+    return null;
+  }
+  return new DrawEntryModel({
+    id: entity.id,
+    tournamentId: entity.tournamentId,
+    position: entity.position,
+    playerId: entity.playerId ?? undefined,
+    seed: entity.seed ?? undefined,
+    round: convertToFamilyType(entity.round, RoundTypeEnum),
+    matchId: entity.matchId ?? undefined,
+  });
+}
+
+/**
+ *  Map Prisma DrawMatch entity to DrawMatchModel
+ * @param entity Prisma DrawMatch entity or null
+ * @returns DrawMatchModel instance or null if input is null
+ * @param entity
+ */
+function mapToDrawMatch(entity: PrismaDrawMatch): DrawMatchModel;
+function mapToDrawMatch(entity: null): null;
+function mapToDrawMatch(entity: PrismaDrawMatch | null): DrawMatchModel | null;
+function mapToDrawMatch(entity: PrismaDrawMatch | null): DrawMatchModel | null {
+  if (!entity) {
+    return null;
+  }
+  return new DrawMatchModel({
+    id: entity.id,
+    tournamentId: entity.tournamentId,
+    round: convertToFamilyType(entity.round, RoundTypeEnum),
+    position: entity.position,
+    player1Id: convertNullToUndefined(entity.player1Id),
+    player2Id: convertNullToUndefined(entity.player2Id),
+    winnerId: convertNullToUndefined(entity.winnerId),
+    nextMatchId: convertNullToUndefined(entity.nextMatchId),
+    status: convertToFamilyType(entity.status, GameStatus),
+    courtId: convertNullToUndefined(entity.courtId),
+    startTime: convertNullToUndefined(entity.startTime),
+    endTime: convertNullToUndefined(entity.endTime),
+  });
+}
+
+export interface DrawStructureModels {
+  tournamentId: string;
+  drawSize: number;
+  entries: DrawEntryModel[];
+  matches: DrawMatchModel[];
+}
 
 export class DrawRepository extends Database {
+  /**
+   * Find draw structure by tournament ID
+   * @param tournamentId
+   *
+   * @returns  Draw structure including entries and matches for the given tournament ID, or null if not found
+   */
   async findByTournamentId(
     tournamentId: string,
-  ): Promise<DrawStructure | null> {
+  ): Promise<DrawStructureModels | null> {
     const entries = await this.drawEntry.findMany({
       where: { tournamentId },
       orderBy: { position: "asc" },
@@ -29,15 +95,22 @@ export class DrawRepository extends Database {
       where: { id: tournamentId },
     });
 
+    const entryModels = entries
+      .map(mapToDrawEntry)
+      .filter((e): e is DrawEntryModel => e !== null);
+    const matchModels = matches
+      .map(mapToDrawMatch)
+      .filter((m): m is DrawMatchModel => m !== null);
+
     return {
       tournamentId,
       drawSize: tournament?.drawSize || 0,
-      entries: entries.map(this.mapToDrawEntry),
-      matches: matches.map(this.mapToDrawMatch),
+      entries: entryModels,
+      matches: matchModels,
     };
   }
 
-  async create(draw: DrawStructure): Promise<DrawStructure> {
+  async create(draw: DrawStructureModels): Promise<DrawStructureModels> {
     // Create draw entries
     await this.drawEntry.createMany({
       data: draw.entries.map((entry) => ({
@@ -76,28 +149,30 @@ export class DrawRepository extends Database {
     tournamentId: string,
     matchId: string,
     winnerId: string,
-  ): Promise<DrawMatch> {
+  ): Promise<DrawMatchModel | null> {
     const match = await this.drawMatch.update({
-      where: { id: matchId },
+      where: { id: matchId, tournamentId },
       data: { winnerId },
     });
 
-    return this.mapToDrawMatch(match);
+    return mapToDrawMatch(match);
   }
 
-  async getMatches(tournamentId: string): Promise<DrawMatch[]> {
+  async getMatches(tournamentId: string): Promise<DrawMatchModel[]> {
     const matches = await this.drawMatch.findMany({
       where: { tournamentId },
       orderBy: [{ round: "asc" }, { position: "asc" }],
     });
 
-    return matches.map(this.mapToDrawMatch);
+    return matches
+      .map(mapToDrawMatch)
+      .filter((m): m is DrawMatchModel => m !== null);
   }
 
   async getMatchesByRound(
     tournamentId: string,
     round: string,
-  ): Promise<DrawMatch[]> {
+  ): Promise<DrawMatchModel[]> {
     const matches = await this.drawMatch.findMany({
       where: {
         tournamentId,
@@ -106,35 +181,10 @@ export class DrawRepository extends Database {
       orderBy: { position: "asc" },
     });
 
-    return matches.map(this.mapToDrawMatch);
-  }
-
-  private mapToDrawEntry(dbEntry: any): DrawEntry {
-    return {
-      id: dbEntry.id,
-      tournamentId: dbEntry.tournamentId,
-      position: dbEntry.position,
-      playerId: dbEntry.playerId,
-      seed: dbEntry.seed,
-      round: dbEntry.round as RoundTypeEnum,
-      matchId: dbEntry.matchId,
-    };
-  }
-
-  private mapToDrawMatch(dbMatch: any): DrawMatch {
-    return {
-      id: dbMatch.id,
-      tournamentId: dbMatch.tournamentId,
-      round: dbMatch.round as RoundTypeEnum,
-      position: dbMatch.position,
-      player1Id: dbMatch.player1Id,
-      player2Id: dbMatch.player2Id,
-      winnerId: dbMatch.winnerId,
-      nextMatchId: dbMatch.nextMatchId,
-      status: dbMatch.status as GameStatus,
-      courtId: dbMatch.courtId,
-      startTime: dbMatch.startTime,
-      endTime: dbMatch.endTime,
-    };
+    return matches
+      .map(mapToDrawMatch)
+      .filter((m): m is DrawMatchModel => m !== null);
   }
 }
+
+export const drawRepository = new DrawRepository();
