@@ -1,3 +1,4 @@
 export * from "./player-validator";
 export * from "./tournament-validator";
+export * from "./game-validator";
 export * from "./validator";

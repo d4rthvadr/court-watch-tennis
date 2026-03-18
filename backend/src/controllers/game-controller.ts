@@ -1,86 +1,53 @@
-import { NotFoundError } from "../errors";
-import { Game, GameStatus, EventTypes } from "../types";
-import { initialGames } from "../data/games.data";
-import { eventBus } from "../event-bus";
+import { Game, GameStatus } from "../types";
+import { gameService } from "../services/game-service";
+import type {
+  CreateGameRequest,
+  UpdateGameRequest,
+} from "../validators/game-validator";
 
 class GameController {
-  games: Game[] = initialGames;
-
-  findAll() {
-    return this.games;
+  async findAll(): Promise<Game[]> {
+    return await gameService.findAllGames();
   }
 
-  find(id: string): Game | undefined {
-    const game = this.games.find((game) => game.id === id);
-
-    if (!game) {
-      throw new NotFoundError(`Game not found with id: ${id}`);
+  async find(id: string): Promise<Game | null> {
+    try {
+      return await gameService.findGameById(id);
+    } catch (error) {
+      return null;
     }
-
-    return game;
   }
 
-  save(game: Game) {
-    const matchingGames = this.games.filter((g) => g.id == game.id);
-
-    if (matchingGames.length > 0) {
-      throw new NotFoundError(`Game already exists with id: ${game.id}`);
-    }
-
-    this.games = [...this.games, game];
+  async save(data: CreateGameRequest): Promise<Game> {
+    return await gameService.createGame({
+      name: data.name,
+      status: data.status,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      playerOneId: data.playerOneId,
+      playerTwoId: data.playerTwoId,
+      courtId: data.courtId,
+    });
   }
 
-  /**
-   * Update an existing game
-   */
-  update(id: string, updates: Partial<Game>): Game {
-    const gameIndex = this.games.findIndex((g) => g.id === id);
-
-    if (gameIndex === -1) {
-      throw new NotFoundError(`Game not found with id: ${id}`);
-    }
-
-    const currentGame = this.games[gameIndex];
-    const updatedGame = { ...currentGame, ...updates };
-
-    this.games[gameIndex] = updatedGame;
-
-    // Emit event if match is completed
-    if (
-      updates.status === GameStatus.Completed &&
-      currentGame.status !== GameStatus.Completed
-    ) {
-      eventBus.createEvent(EventTypes.matchCompleted, {
-        gameId: id,
-        game: updatedGame,
-      });
-
-      const eventData = JSON.stringify({
-        type: EventTypes.matchCompleted,
-        payload: updatedGame,
-      });
-      eventBus.createEvent(EventTypes.sseNotification, eventData);
-    }
-
-    return updatedGame;
+  async update(id: string, data: UpdateGameRequest): Promise<Game> {
+    return await gameService.updateGame(id, {
+      name: data.name,
+      status: data.status,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      playerOneId: data.playerOneId,
+      playerTwoId: data.playerTwoId,
+      courtId: data.courtId,
+    });
   }
 
-  /**
-   * Update game status
-   */
-  updateStatus(id: string, status: GameStatus): Game {
-    return this.update(id, { status });
+  async updateStatus(id: string, status: GameStatus): Promise<Game> {
+    return await gameService.updateGameStatus(id, status);
   }
 
-  delete(id: string) {
-    const matchingGames = this.games.filter((g) => g.id !== id);
-
-    if (matchingGames.length === this.games.length) {
-      console.warn("Game not found for deletion");
-      return;
-    }
-
-    this.games = matchingGames;
+  async delete(id: string): Promise<void> {
+    await gameService.deleteGame(id);
   }
 }
 
