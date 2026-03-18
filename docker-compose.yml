@@ -1,4 +1,13 @@
 services:
+  # Redis for BullMQ
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - court-watch-network
+    restart: unless-stopped
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
