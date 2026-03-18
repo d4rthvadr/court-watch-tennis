@@ -6,7 +6,7 @@ import {
   sseRouter,
   tournamentRouter,
   drawRouter,
-} from "./routes";
+} from "./routes/index";
 import { HttpError, InternalServerError } from "./errors";
 
 const app = express();

@@ -63,6 +63,7 @@ class TournamentService {
       throw new Error("End date must be after start date");
     }
 
+    console.log("Creating tournament with data:", data);
     const tournament = await tournamentRepository.save(
       new TournamentModel({
         name: data.name,
@@ -76,6 +77,7 @@ class TournamentService {
       }),
     );
 
+    console.log("Created tournament:", tournament);
     return toTournamentDTO(tournament);
   }
 
