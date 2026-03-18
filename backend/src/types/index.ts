@@ -1,4 +1,9 @@
-export { Player, PlayerWithGameStatus, EventTypes } from "./player";
+export {
+  Player,
+  PlayerWithGameStatus,
+  EventTypes,
+  PlayerStatus,
+} from "./player";
 export { Game, GameStatus } from "./game";
 export {
   Tournament,

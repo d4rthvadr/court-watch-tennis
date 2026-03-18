@@ -1,5 +1,4 @@
-import { body, validationResult } from "express-validator";
-import { Request, Response, NextFunction } from "express";
+import { body } from "express-validator";
 import { SurfaceType, DrawSize, MatchType } from "../types";
 
 /**
@@ -100,21 +99,3 @@ export const generateDrawValidator = [
     .isNumeric()
     .withMessage("Player seed must be a number"),
 ];
-
-/**
- * Middleware to handle validation errors
- */
-export const handleValidationErrors = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      error: "Validation failed",
-      details: errors.array(),
-    });
-  }
-  next();
-};

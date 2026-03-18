@@ -1,82 +1,72 @@
-import { EventTypes, PlayerWithGameStatus } from "../types";
-import { eventBus } from "../event-bus";
-import { initialPlayers } from "../data/players.data";
+import { Player } from "../types";
+import {
+  playerService,
+  CreatePlayerData,
+  UpdatePlayerData,
+} from "../services/player-service";
 
-interface EventData<T = unknown> {
-  type: EventTypes;
-  payload: T;
+export interface CreatePlayerRequest {
+  name: string;
+  status: string;
+  rank: number;
 }
 
-export const createEventData = (type: EventTypes, payload: unknown): string => {
-  const data = {
-    type,
-    payload,
-  } satisfies EventData;
+export interface UpdatePlayerRequest {
+  name?: string;
+  status?: string;
+  rank?: number;
+}
 
-  return JSON.stringify(data);
-};
 class PlayerController {
-  players: PlayerWithGameStatus[] = initialPlayers;
-
-  findAll() {
-    return this.players;
+  /**
+   * Get all players
+   */
+  async findAllPlayers(): Promise<Player[]> {
+    return await playerService.findAllPlayers();
   }
 
-  find(id: string): PlayerWithGameStatus {
-    const player = this.players.find((player) => player.id === id);
-
-    if (!player) {
-      throw new Error("Player not found");
-    }
-    return player;
+  /**
+   * Get player by ID
+   */
+  async findPlayer(id: string): Promise<Player> {
+    return await playerService.findPlayerById(id);
   }
 
-  create(player: PlayerWithGameStatus) {
-    this.players.push(player);
+  /**
+   * Create a new player
+   */
+  async createPlayer(data: CreatePlayerRequest): Promise<Player> {
+    return await playerService.createPlayer(data);
+  }
 
-    const eventData = createEventData(EventTypes.playerCreated, player);
-    console.log("Player created and event emitted:", { player, eventData });
+  /**
+   * Update player
+   */
+  async updatePlayer(id: string, data: UpdatePlayerRequest): Promise<Player> {
+    return await playerService.updatePlayer(id, data);
+  }
 
-    eventBus.createEvent(EventTypes.playerCreated, player);
-    eventBus.createEvent(EventTypes.sseNotification, eventData);
+  /**
+   * Delete player
+   */
+  async deletePlayer(id: string): Promise<void> {
+    return await playerService.deletePlayer(id);
   }
 
   /**
    * Get seeded players for tournament draw generation
-   * Returns players sorted by seed number
    */
-  getSeededPlayers(): PlayerWithGameStatus[] {
-    return this.players
-      .filter((p) => p.seed !== undefined)
-      .sort((a, b) => (a.seed || 0) - (b.seed || 0));
+  async getSeededPlayers(): Promise<Player[]> {
+    return await playerService.getSeededPlayers();
   }
 
   /**
    * Get players for tournament (with id, name, seed)
    */
-  getPlayersForTournament() {
-    return this.players.map((player) => ({
-      id: player.id,
-      name: player.name,
-      seed: player.seed,
-    }));
-  }
-
-  getPlayerRankings() {
-    return this.players.map((player) => {
-      const gameStatuses = ["Paid", "Pending", "Unpaid"];
-      const playerStatuses = ["Playing", "Waiting"];
-      const randomGameStatus =
-        gameStatuses[Math.floor(Math.random() * gameStatuses.length)];
-      return {
-        ...player,
-        rank: (Math.floor(Math.random() * 100) + 1).toString(),
-        status:
-          playerStatuses[Math.floor(Math.random() * playerStatuses.length)],
-        gameStatus: randomGameStatus,
-      };
-    });
+  async getPlayersForTournament() {
+    return await playerService.getPlayersForTournament();
   }
 }
 
+// Export singleton instance
 export const playerController = new PlayerController();

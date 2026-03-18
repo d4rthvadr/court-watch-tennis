@@ -1,57 +1,122 @@
 import { Router, Request, Response } from "express";
 import { playerController } from "../controllers";
-import { asyncHandler } from "../util";
+import {
+  createPlayerValidator,
+  updatePlayerValidator,
+  CreatePlayerRequest,
+  UpdatePlayerRequest,
+} from "../validators/player-validator";
+import { handleValidationErrors } from "../validators/validator";
+import { asyncHandler } from "../utils/async-handler";
 
 const router = Router();
 
-router.get("/", (_, res: Response) => {
-  const players = playerController.findAll();
-  res.status(200).json({ data: players });
-});
+/**
+ * GET /api/players
+ * Get all players
+ */
+router.get(
+  "/",
+  asyncHandler(async (req: Request, res: Response) => {
+    const players = await playerController.findAllPlayers();
+    res.status(200).json({ data: players });
+  }),
+);
 
-router.get("/seeded", (_, res: Response) => {
-  const players = playerController.getSeededPlayers();
-  res.status(200).json({ data: players });
-});
+/**
+ * GET /api/players/seeded
+ * Get seeded players for tournament draw generation
+ */
+router.get(
+  "/seeded",
+  asyncHandler(async (req: Request, res: Response) => {
+    const players = await playerController.getSeededPlayers();
+    res.status(200).json({ data: players });
+  }),
+);
 
-router.get("/tournament", (_, res: Response) => {
-  const players = playerController.getPlayersForTournament();
-  res.status(200).json({ data: players });
-});
+/**
+ * GET /api/players/tournament
+ * Get players for tournament (with id, name, seed)
+ */
+router.get(
+  "/tournament",
+  asyncHandler(async (req: Request, res: Response) => {
+    const players = await playerController.getPlayersForTournament();
+    res.status(200).json({ data: players });
+  }),
+);
 
+/**
+ * POST /api/players
+ * Create a new player
+ */
 router.post(
-  "/players",
-  asyncHandler((req: Request, res: Response) => {
-    try {
-      const { id, name, status, rank, seed, gameStatus, court } = req.body;
+  "/",
+  createPlayerValidator,
+  handleValidationErrors,
+  asyncHandler(
+    async (req: Request<{}, {}, CreatePlayerRequest>, res: Response) => {
+      const { name, status, rank } = req.body;
 
-      if (!id || !name || !status || !rank || !gameStatus || !court) {
-        return res.status(400).json({
-          error:
-            "Missing required fields: id, name, status, rank, gameStatus, court",
-        });
-      }
-
-      const newPlayer = {
-        id,
+      const player = await playerController.createPlayer({
         name,
         status,
         rank,
-        seed,
-        gameStatus,
-        court,
-      };
-
-      playerController.create(newPlayer);
-
-      res.status(201).json({
-        message: "Player created successfully",
-        player: newPlayer,
       });
-    } catch (error) {
-      console.error("Error creating player:", error);
-      res.status(500).json({ error: "Failed to create player" });
-    }
+
+      res.status(201).json({ data: player });
+    },
+  ),
+);
+
+/**
+ * GET /api/players/:id
+ * Get player by ID
+ */
+router.get(
+  "/:id",
+  asyncHandler(async (req: Request, res: Response) => {
+    const player = await playerController.findPlayer(req.params.id);
+    res.status(200).json({ data: player });
+  }),
+);
+
+/**
+ * PATCH /api/players/:id
+ * Update player
+ */
+router.patch(
+  "/:id",
+  updatePlayerValidator,
+  handleValidationErrors,
+  asyncHandler(
+    async (
+      req: Request<{ id: string }, {}, UpdatePlayerRequest>,
+      res: Response,
+    ) => {
+      const { name, status, rank } = req.body;
+
+      const player = await playerController.updatePlayer(req.params.id, {
+        name,
+        status,
+        rank,
+      });
+
+      res.status(200).json({ data: player });
+    },
+  ),
+);
+
+/**
+ * DELETE /api/players/:id
+ * Delete player
+ */
+router.delete(
+  "/:id",
+  asyncHandler(async (req: Request, res: Response) => {
+    await playerController.deletePlayer(req.params.id);
+    res.status(204).send();
   }),
 );
 

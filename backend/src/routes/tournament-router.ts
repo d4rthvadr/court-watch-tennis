@@ -1,12 +1,12 @@
 import { Response, Request, Router } from "express";
 import { tournamentController } from "../controllers/tournament-controller";
-import { asyncHandler } from "../util";
 import { TournamentStatus, SurfaceType, DrawSize, MatchType } from "../types";
 import {
   createTournamentValidator,
-  handleValidationErrors,
   CreateTournamentRequest,
 } from "../validators/tournament-validator";
+import { handleValidationErrors } from "../validators/validator";
+import { asyncHandler } from "../utils/async-handler";
 
 const router = Router();
 
