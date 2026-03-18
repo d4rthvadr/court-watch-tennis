@@ -28,11 +28,40 @@ export class SeedingStrategy {
     players: SeededPlayer[],
     drawSize: number,
   ): Map<number, SeededPlayer> {
+    // --- Edge case: drawSize must be positive ---
+    if (drawSize < 1) {
+      throw new Error(`Draw size must be at least 1. Got: ${drawSize}`);
+    }
+
+    // --- Edge case: player list must not be empty ---
+    if (players.length === 0) {
+      throw new Error(`Player list is empty. Cannot assign positions.`);
+    }
+
+    // --- Edge case: duplicate player IDs ---
+    const seenIds = new Set<string>();
+    players.forEach((p) => {
+      if (seenIds.has(p.id)) {
+        throw new Error(
+          `Duplicate player ID '${p.id}' found for player '${p.name}'. All player IDs must be unique.`,
+        );
+      }
+      seenIds.add(p.id);
+    });
+
     // Step 1: Validate seeds
     const seedingPositions = this.getStandardSeedingPositions(drawSize);
     const seenSeeds = new Set<number>();
     players.forEach((p) => {
       if (p.seed !== undefined) {
+        // --- Edge case: seeds with non-standard draw size ---
+        if (seedingPositions.length !== drawSize) {
+          // Comment: If using a non-standard draw size, seeding positions may not match ATP/WTA standards.
+          // You may want to warn or restrict seeding for custom draw sizes.
+          throw new Error(
+            `Seeding is not supported for non-standard draw size (${drawSize}). Player '${p.name}' has seed ${p.seed}.`,
+          );
+        }
         if (
           !Number.isInteger(p.seed) ||
           p.seed < 1 ||
