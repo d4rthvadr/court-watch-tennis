@@ -38,4 +38,28 @@ describe("Tournament Integration", () => {
     expect(res.body.data.name).toBe(payload.name);
     tournamentId = res.body.data.id;
   });
+
+  it("should fetch all tournaments", async () => {
+    const res = await request(app).get("/api/tournaments");
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeInstanceOf(Array);
+    expect(res.body.data[0]).toHaveProperty("id");
+    expect(res.body.data[0].name).toBe("Spring Open");
+  });
+
+  it("should fetch tournament by id", async () => {
+    const res = await request(app).get(`/api/tournaments/${mockTournament.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveProperty("id");
+    expect(res.body.data.id).toBe(mockTournament.id);
+    expect(res.body.data.name).toBe("Spring Open");
+  });
+
+  it("should return 404 if tournament does not exist", async () => {
+    // Mock findById to return null for this test
+    tournamentRepositoryMock.findById.mockResolvedValueOnce(null);
+    const res = await request(app).get("/api/tournaments/nonexistent-id");
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/not found/i);
+  });
 });
