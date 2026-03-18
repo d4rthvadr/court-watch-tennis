@@ -2,7 +2,6 @@ import { Request, Response, Router } from "express";
 import crypto from "node:crypto";
 import { eventBus } from "../event-bus";
 import { EventTypes } from "../types";
-import { createEventData, playerController } from "../controllers";
 const router = Router();
 
 const updateDefaultInterval = 15 * 1000;
@@ -15,7 +14,7 @@ const getClientId = (clientId?: string): string => {
 
 const getUpdateInterval = (
   defaultInterval: number,
-  interval?: string
+  interval?: string,
 ): number => {
   const parsed = parseInt(interval || "");
   return isNaN(parsed) ? defaultInterval : parsed;
@@ -29,11 +28,11 @@ router.get("/sse", (req: Request, res: Response) => {
   const clientId = getClientId(req.query?.clientId?.toString());
   const clientUpdateInterval = getUpdateInterval(
     updateDefaultInterval,
-    req.query?.updateInterval?.toString()
+    req.query?.updateInterval?.toString(),
   );
 
   console.log(
-    `Client ${clientId} connected with update interval ${clientUpdateInterval}ms`
+    `Client ${clientId} connected with update interval ${clientUpdateInterval}ms`,
   );
 
   connectedClients.set(clientId, res);
@@ -46,9 +45,13 @@ router.get("/sse", (req: Request, res: Response) => {
   });
 
   const sendEvent = () => {
-    const rankings = playerController.getPlayerRankings();
-
-    const eventData = createEventData(EventTypes.sseNotification, rankings);
+    const rankings = [];
+    const eventData = JSON.stringify({
+      type: "update",
+      payload: {
+        rankings,
+      },
+    });
     res.write(`data: ${eventData}\n\n`);
   };
 
@@ -62,7 +65,7 @@ router.get("/sse", (req: Request, res: Response) => {
       `Client ${clientId} disconnected from /sse`,
       " Remaining clients:",
       connectedClients.size,
-      isRemoved ? "" : "(was not found)"
+      isRemoved ? "" : "(was not found)",
     );
     clearInterval(intervalId);
   });

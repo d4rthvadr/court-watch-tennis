@@ -29,7 +29,7 @@ router.get(
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const game = await gameController.find(req.params.id);
+    const game = await gameController.find(req.params.id as string);
     if (!game) {
       return res.status(404).json({ error: "Game not found" });
     }
@@ -60,7 +60,7 @@ router.patch(
   updateGameValidator,
   handleValidationErrors,
   asyncHandler(async (req: Request, res: Response) => {
-    const game = await gameController.update(req.params.id, req.body);
+    const game = await gameController.update(req.params.id as string, req.body);
     res.json(game);
   }),
 );
@@ -75,7 +75,10 @@ router.patch(
   handleValidationErrors,
   asyncHandler(async (req: Request, res: Response) => {
     const { status } = req.body;
-    const game = await gameController.updateStatus(req.params.id, status);
+    const game = await gameController.updateStatus(
+      req.params.id as string,
+      status,
+    );
     res.json(game);
   }),
 );
@@ -87,7 +90,7 @@ router.patch(
 router.delete(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    await gameController.delete(req.params.id);
+    await gameController.delete(req.params.id as string);
     res.status(204).send();
   }),
 );

@@ -77,7 +77,7 @@ router.post(
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const player = await playerController.findPlayer(req.params.id);
+    const player = await playerController.findPlayer(req.params.id as string);
     res.status(200).json({ data: player });
   }),
 );
@@ -97,11 +97,14 @@ router.patch(
     ) => {
       const { name, status, rank } = req.body;
 
-      const player = await playerController.updatePlayer(req.params.id, {
-        name,
-        status,
-        rank,
-      });
+      const player = await playerController.updatePlayer(
+        req.params.id as string,
+        {
+          name,
+          status,
+          rank,
+        },
+      );
 
       res.status(200).json({ data: player });
     },
@@ -115,7 +118,7 @@ router.patch(
 router.delete(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    await playerController.deletePlayer(req.params.id);
+    await playerController.deletePlayer(req.params.id as string);
     res.status(204).send();
   }),
 );

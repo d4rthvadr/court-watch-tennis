@@ -60,7 +60,9 @@ router.post(
 router.get(
   "/:tournamentId/draw",
   asyncHandler(async (req: Request, res: Response) => {
-    const draw = await drawController.getDraw(req.params.tournamentId);
+    const draw = await drawController.getDraw(
+      req.params.tournamentId as string,
+    );
     res.status(200).json({ data: draw });
   }),
 );
@@ -77,11 +79,13 @@ router.get(
     let matches;
     if (round) {
       matches = await drawController.getMatchesByRound(
-        req.params.tournamentId,
+        req.params.tournamentId as string,
         round as string,
       );
     } else {
-      matches = await drawController.getMatches(req.params.tournamentId);
+      matches = await drawController.getMatches(
+        req.params.tournamentId as string,
+      );
     }
 
     res.status(200).json({ data: matches });
@@ -102,8 +106,8 @@ router.patch(
     }
 
     const match = await drawController.updateMatchResult(
-      req.params.tournamentId,
-      req.params.matchId,
+      req.params.tournamentId as string,
+      req.params.matchId as string,
       { winnerId },
     );
 
