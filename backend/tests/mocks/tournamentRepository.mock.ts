@@ -19,8 +19,27 @@ export const mockTournament = {
 };
 
 export const tournamentRepositoryMock = {
-  findAll: vi.fn().mockResolvedValue([mockTournament]),
-  findById: vi.fn().mockResolvedValue(mockTournament),
-  save: vi.fn().mockResolvedValue(mockTournament),
+  findAll: vi.fn().mockResolvedValue([
+    {
+      ...mockTournament,
+      id: "tournament-16",
+      drawSize: 16,
+    },
+  ]),
+  findById: vi.fn((id) => {
+    if (id === "tournament-16") {
+      return Promise.resolve({
+        ...mockTournament,
+        id: "tournament-16",
+        drawSize: 16,
+      });
+    }
+    return Promise.resolve(mockTournament);
+  }),
+  save: vi.fn().mockResolvedValue({
+    ...mockTournament,
+    id: "tournament-16",
+    drawSize: 16,
+  }),
   // Additional methods can be mocked as needed
 } as any;

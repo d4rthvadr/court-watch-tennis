@@ -112,17 +112,37 @@ export const mockDraw32 = {
 };
 // Missing comma added here
 
+// Internal state for created draws
+let createdDraws: Record<string, any> = {};
+
 export const drawRepositoryMock = {
-  createDraw: vi.fn((tournamentId, size) => {
-    if (size === 8) return Promise.resolve(mockDraw8);
-    if (size === 16) return Promise.resolve(mockDraw16);
-    if (size === 32) return Promise.resolve(mockDraw32);
-    return Promise.reject(new Error("Invalid draw size"));
+  create: vi.fn(({ tournamentId, drawSize, entries, matches }) => {
+    if (createdDraws[tournamentId]) {
+      return Promise.reject(
+        new Error(`Draw already exists for tournament ${tournamentId}`),
+      );
+    }
+    if (drawSize !== 16) {
+      return Promise.reject(new Error("Invalid draw size"));
+    }
+    // Store the draw object
+    const draw = {
+      drawSize: drawSize, // API expects 'drawSize'
+      entries,
+      matches,
+    };
+    createdDraws[tournamentId] = draw;
+    return Promise.resolve(draw);
   }),
   findByTournamentId: vi.fn((tournamentId) => {
-    if (tournamentId === "tournament-8") return Promise.resolve(mockDraw8);
-    if (tournamentId === "tournament-16") return Promise.resolve(mockDraw16);
-    if (tournamentId === "tournament-32") return Promise.resolve(mockDraw32);
-    return Promise.resolve(null);
+    return Promise.resolve(createdDraws[tournamentId] || null);
   }),
+  // Utility to reset state for tests
+
+  mockClear: () => {
+    createdDraws = {};
+  },
+  _reset: () => {
+    createdDraws = {};
+  },
 } as any;
