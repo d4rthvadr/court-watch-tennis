@@ -11,6 +11,7 @@
     "start:dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node ./dist/server.js",
+    "seed": "ts-node ./prisma/seeds/player.seed.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:reset": "prisma migrate reset",
