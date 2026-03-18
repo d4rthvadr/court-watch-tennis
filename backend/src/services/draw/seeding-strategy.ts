@@ -28,32 +28,66 @@ export class SeedingStrategy {
     players: SeededPlayer[],
     drawSize: number,
   ): Map<number, SeededPlayer> {
-    const positions = new Map<number, SeededPlayer>();
-
-    // Get standard seeding positions for this draw size
+    // Step 1: Validate seeds
     const seedingPositions = this.getStandardSeedingPositions(drawSize);
-
-    // Get available positions for unseeded players (randomized once)
-    const availablePositions = this.getRandomizedAvailablePositions(
-      drawSize,
-      seedingPositions,
-    );
-    let availableIndex = 0;
-
-    players.forEach((player) => {
-      let position: number;
-
-      if (player.seed && player.seed <= seedingPositions.length) {
-        // Place seeded player in standard position
-        position = seedingPositions[player.seed - 1];
-      } else {
-        // Place unseeded player in randomized available position
-        position = availablePositions[availableIndex++];
+    const seenSeeds = new Set<number>();
+    players.forEach((p) => {
+      if (p.seed !== undefined) {
+        if (
+          !Number.isInteger(p.seed) ||
+          p.seed < 1 ||
+          p.seed > seedingPositions.length
+        ) {
+          throw new Error(
+            `Invalid seed ${p.seed} for player '${p.name}'. Seed must be 1..${seedingPositions.length}`,
+          );
+        }
+        if (seenSeeds.has(p.seed)) {
+          throw new Error(
+            `Duplicate seed ${p.seed} found for player '${p.name}'. All seeds must be unique.`,
+          );
+        }
+        seenSeeds.add(p.seed);
       }
-
-      positions.set(position, player);
     });
 
+    // Step 2: Assign seeded players
+    const positions = new Map<number, SeededPlayer>();
+    players.forEach((player) => {
+      if (player.seed !== undefined) {
+        const pos = seedingPositions[player.seed - 1];
+        if (positions.has(pos)) {
+          throw new Error(
+            `Position ${pos} already assigned. Check for duplicate seeds.`,
+          );
+        }
+        positions.set(pos, player);
+      }
+    });
+
+    // Step 3: Assign unseeded players to remaining positions (randomized)
+    const allPositions = Array.from({ length: drawSize }, (_, i) => i + 1);
+    const unassignedPositions = allPositions.filter(
+      (pos) => !positions.has(pos),
+    );
+    const unseededPlayers = players.filter((p) => p.seed === undefined);
+    const shuffledUnassigned = this.shuffleArray(unassignedPositions);
+    if (unseededPlayers.length > shuffledUnassigned.length) {
+      throw new Error(
+        `Not enough positions for unseeded players. Unseeded: ${unseededPlayers.length}, available: ${shuffledUnassigned.length}`,
+      );
+    }
+    unseededPlayers.forEach((player, idx) => {
+      const pos = shuffledUnassigned[idx];
+      positions.set(pos, player);
+    });
+
+    // Step 4: Final validation
+    if (positions.size !== players.length) {
+      throw new Error(
+        `Mismatch: assigned positions (${positions.size}) != players (${players.length}).`,
+      );
+    }
     return positions;
   }
 
