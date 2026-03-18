@@ -11,7 +11,7 @@ export interface Game {
   status: GameStatus;
   startTime?: string;
   endTime?: string;
-  player_one_id: string;
-  player_two_id: string;
+  playerOneId: string;
+  playerTwoId: string;
   courtId: string;
 }
