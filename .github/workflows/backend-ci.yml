@@ -33,7 +33,7 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
         env:
-          DATABASE_URL: "postgresql://user:password@localhost:5432/db"
+          DATABASE_URL: "postgresql://user:password@localhost:5432/db" # Dummy URL for generation to silence prisma warnings
 
       - name: Type check
         run: npx tsc --noEmit
