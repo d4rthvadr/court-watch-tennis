@@ -10,8 +10,8 @@ const toGameDTO = (g: GameModel): Game => ({
   status: g.status,
   startTime: g.startTime,
   endTime: g.endTime,
-  player_one_id: g.playerOneId,
-  player_two_id: g.playerTwoId,
+  playerOneId: g.playerOneId,
+  playerTwoId: g.playerTwoId,
   courtId: g.courtId,
 });
 

@@ -64,7 +64,9 @@ router.post(
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const tournament = await tournamentController.findTournament(req.params.id);
+    const tournament = await tournamentController.findTournament(
+      req.params.id as string,
+    );
     res.status(200).json({ data: tournament });
   }),
 );
@@ -83,7 +85,7 @@ router.patch(
     }
 
     const tournament = await tournamentController.updateTournamentStatus(
-      req.params.id,
+      req.params.id as string,
       status as TournamentStatus,
     );
 
@@ -91,4 +93,4 @@ router.patch(
   }),
 );
 
-export default router;
+export const tournamentRouter = router;

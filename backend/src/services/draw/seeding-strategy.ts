@@ -28,32 +28,95 @@ export class SeedingStrategy {
     players: SeededPlayer[],
     drawSize: number,
   ): Map<number, SeededPlayer> {
-    const positions = new Map<number, SeededPlayer>();
+    // --- Edge case: drawSize must be positive ---
+    if (drawSize < 1) {
+      throw new Error(`Draw size must be at least 1. Got: ${drawSize}`);
+    }
 
-    // Get standard seeding positions for this draw size
-    const seedingPositions = this.getStandardSeedingPositions(drawSize);
+    // --- Edge case: player list must not be empty ---
+    if (players.length === 0) {
+      throw new Error(`Player list is empty. Cannot assign positions.`);
+    }
 
-    // Get available positions for unseeded players (randomized once)
-    const availablePositions = this.getRandomizedAvailablePositions(
-      drawSize,
-      seedingPositions,
-    );
-    let availableIndex = 0;
-
-    players.forEach((player) => {
-      let position: number;
-
-      if (player.seed && player.seed <= seedingPositions.length) {
-        // Place seeded player in standard position
-        position = seedingPositions[player.seed - 1];
-      } else {
-        // Place unseeded player in randomized available position
-        position = availablePositions[availableIndex++];
+    // --- Edge case: duplicate player IDs ---
+    const seenIds = new Set<string>();
+    players.forEach((p) => {
+      if (seenIds.has(p.id)) {
+        throw new Error(
+          `Duplicate player ID '${p.id}' found for player '${p.name}'. All player IDs must be unique.`,
+        );
       }
-
-      positions.set(position, player);
+      seenIds.add(p.id);
     });
 
+    // Step 1: Validate seeds
+    const seedingPositions = this.getStandardSeedingPositions(drawSize);
+    const seenSeeds = new Set<number>();
+    players.forEach((p) => {
+      if (p.seed !== undefined) {
+        // --- Edge case: seeds with non-standard draw size ---
+        if (seedingPositions.length !== drawSize) {
+          // Comment: If using a non-standard draw size, seeding positions may not match ATP/WTA standards.
+          // You may want to warn or restrict seeding for custom draw sizes.
+          throw new Error(
+            `Seeding is not supported for non-standard draw size (${drawSize}). Player '${p.name}' has seed ${p.seed}.`,
+          );
+        }
+        if (
+          !Number.isInteger(p.seed) ||
+          p.seed < 1 ||
+          p.seed > seedingPositions.length
+        ) {
+          throw new Error(
+            `Invalid seed ${p.seed} for player '${p.name}'. Seed must be 1..${seedingPositions.length}`,
+          );
+        }
+        if (seenSeeds.has(p.seed)) {
+          throw new Error(
+            `Duplicate seed ${p.seed} found for player '${p.name}'. All seeds must be unique.`,
+          );
+        }
+        seenSeeds.add(p.seed);
+      }
+    });
+
+    // Step 2: Assign seeded players
+    const positions = new Map<number, SeededPlayer>();
+    players.forEach((player) => {
+      if (player.seed !== undefined) {
+        const pos = seedingPositions[player.seed - 1];
+        if (positions.has(pos)) {
+          throw new Error(
+            `Position ${pos} already assigned. Check for duplicate seeds.`,
+          );
+        }
+        positions.set(pos, player);
+      }
+    });
+
+    // Step 3: Assign unseeded players to remaining positions (randomized)
+    const allPositions = Array.from({ length: drawSize }, (_, i) => i + 1);
+    const unassignedPositions = allPositions.filter(
+      (pos) => !positions.has(pos),
+    );
+    const unseededPlayers = players.filter((p) => p.seed === undefined);
+    const shuffledUnassigned = this.shuffleArray(unassignedPositions);
+    if (unseededPlayers.length > shuffledUnassigned.length) {
+      throw new Error(
+        `Not enough positions for unseeded players. Unseeded: ${unseededPlayers.length}, available: ${shuffledUnassigned.length}`,
+      );
+    }
+    unseededPlayers.forEach((player, idx) => {
+      const pos = shuffledUnassigned[idx];
+      positions.set(pos, player);
+    });
+
+    // Step 4: Final validation
+    if (positions.size !== players.length) {
+      throw new Error(
+        `Mismatch: assigned positions (${positions.size}) != players (${players.length}).`,
+      );
+    }
     return positions;
   }
 
