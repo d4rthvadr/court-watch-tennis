@@ -37,6 +37,14 @@ const getJobHandler = async (job: Job): Promise<IQueueService | undefined> => {
   }
 };
 
+worker.on("ready", () => {
+  console.log("[PlayerQueueWorker] Worker is ready and listening for jobs...");
+});
+
+worker.on("error", (err) => {
+  console.error("[PlayerQueueWorker] Worker error:", err);
+});
+
 worker.on("completed", (job) => {
   console.log(`[PlayerQueueWorker] Job completed: ${job.id}`);
 });

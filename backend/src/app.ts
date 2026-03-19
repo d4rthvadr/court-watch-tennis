@@ -8,11 +8,15 @@ import {
   drawRouter,
 } from "./routes/index";
 import { HttpError, InternalServerError } from "./errors";
+import { startBackgroundQueues } from "@infra/queues/queues";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Start background queues
+startBackgroundQueues();
 
 app.get("/health", (_, res: Response) => {
   res.status(200).send("OK\n");

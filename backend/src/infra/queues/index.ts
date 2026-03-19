@@ -16,5 +16,3 @@ export interface IQueueService<T = any> {
   addJob(data: T, options?: JobsOptions): Promise<Job<T>>;
   handleJob(data: T): Promise<void>;
 }
-
-//
