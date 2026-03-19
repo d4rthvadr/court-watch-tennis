@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { connectionOpts, redis } from "./redis";
+import { connectionOpts, redis } from "../redis";
 
 const worker = new Worker(
   "tournament",

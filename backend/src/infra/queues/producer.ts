@@ -1,5 +1,5 @@
 import { Queue } from "bullmq";
-import { connectionOpts } from "./redis";
+import { connectionOpts } from "../redis";
 
 const queue = new Queue("tournament", { connection: connectionOpts });
 
