@@ -12,6 +12,10 @@ export class MatchProgressionService {
    * @param winnerId - ID of winning player
    * @returns Updated matches array
    */
+  /**
+   * Advance winner to next round and return only updated matches
+   * @returns Array of updated matches: [completedMatch, nextMatch?]
+   */
   advanceWinner(
     matches: DrawMatch[],
     matchId: string,
@@ -22,16 +26,15 @@ export class MatchProgressionService {
       throw new Error(`Match ${matchId} not found`);
     }
 
-    // Validate winner is one of the match players
     this.validateWinner(match, winnerId);
 
     // Update match with winner
     match.winnerId = winnerId;
     match.status = GameStatus.Completed;
 
-    // If there's a next match, advance winner
+    let nextMatch: DrawMatch | undefined = undefined;
     if (match.nextMatchId) {
-      const nextMatch = matches.find((m) => m.id === match.nextMatchId);
+      nextMatch = matches.find((m) => m.id === match.nextMatchId);
       if (nextMatch) {
         // Place winner in appropriate slot of next match
         if (!nextMatch.player1Id) {
@@ -39,7 +42,6 @@ export class MatchProgressionService {
         } else if (!nextMatch.player2Id) {
           nextMatch.player2Id = winnerId;
         }
-
         // If both players are now assigned, mark match as scheduled
         if (nextMatch.player1Id && nextMatch.player2Id) {
           nextMatch.status = GameStatus.Scheduled;
@@ -47,7 +49,8 @@ export class MatchProgressionService {
       }
     }
 
-    return matches;
+    // Return only the updated matches
+    return nextMatch ? [match, nextMatch] : [match];
   }
 
   /**

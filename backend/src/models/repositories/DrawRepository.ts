@@ -185,6 +185,38 @@ export class DrawRepository extends Database {
       .map(mapToDrawMatch)
       .filter((m): m is DrawMatchModel => m !== null);
   }
+
+  /**
+   * Get a single match by tournamentId and matchId
+   */
+  async getMatchById(
+    tournamentId: string,
+    matchId: string,
+  ): Promise<DrawMatchModel | null> {
+    const match = await this.drawMatch.findUnique({
+      where: { id: matchId, tournamentId },
+    });
+    return mapToDrawMatch(match);
+  }
+  /**
+   * Update all relevant fields for a match (winnerId, player1Id, player2Id, status)
+   */
+  async updateMatchFields(
+    tournamentId: string,
+    matchId: string,
+    fields: Partial<{
+      winnerId: string | null;
+      player1Id: string | null;
+      player2Id: string | null;
+      status: string;
+    }>,
+  ): Promise<DrawMatchModel | null> {
+    const match = await this.drawMatch.update({
+      where: { id: matchId, tournamentId },
+      data: fields,
+    });
+    return mapToDrawMatch(match);
+  }
 }
 
 export const drawRepository = new DrawRepository();

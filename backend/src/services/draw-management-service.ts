@@ -6,6 +6,7 @@ import {
   TournamentStatus,
   EventTypes,
   RoundTypeEnum,
+  GameStatus,
 } from "../types";
 import { drawOrchestratorService } from "./draw/draw-orchestrator-service";
 import { eventBus } from "../event-bus";
@@ -13,6 +14,7 @@ import { drawRepository } from "@models/repositories";
 import { tournamentService } from "./tournament-service";
 import { DrawEntryModel, DrawMatchModel } from "@models/draw";
 import { DrawStructureModels } from "@models/repositories/DrawRepository";
+import { advancePlayerQueueService } from "@infra/queues/player-queue/services/container";
 
 function toDrawEntryDTO(model: DrawEntryModel): DrawEntry {
   return {
@@ -165,10 +167,8 @@ class DrawManagementService {
     matchId: string,
     data: UpdateMatchResultData,
   ): Promise<DrawMatch> {
-    const draw = await this.getDraw(tournamentId);
-
-    // Find the match
-    const match = draw.matches.find((m) => m.id === matchId);
+    // Fetch the current match directly
+    const match = await drawRepository.getMatchById(tournamentId, matchId);
     if (!match) {
       throw new NotFoundError(`Match not found with id: ${matchId}`);
     }
@@ -188,38 +188,52 @@ class DrawManagementService {
       );
     }
 
-    // Advance winner using DrawOrchestratorService
-    const updatedMatches = drawOrchestratorService.advanceWinner(
-      draw.matches,
-      matchId,
-      data.winnerId,
-    );
+    // Update the current match with the winner
+    await drawRepository.updateMatchFields(tournamentId, matchId, {
+      winnerId: data.winnerId,
+      status: GameStatus.Completed,
+    });
 
-    // Update the draw in database
-    const updatedMatchModel = await drawRepository.updateMatch(
-      tournamentId,
-      matchId,
-      data.winnerId,
-    );
-    const updatedMatch = updatedMatchModel
-      ? toDrawMatchDTO(updatedMatchModel)
-      : match;
-
-    // Emit player advanced event
-    this.emitPlayerAdvancedEvent(
-      tournamentId,
-      matchId,
-      data.winnerId,
-      match.round,
-    );
-
-    // Check if round is complete
-    await this.checkAndEmitRoundCompletion(tournamentId, match.round);
+    // If there's a next match, update it directly
+    // TODO: Move this into a queue job to handle player advancement asynchronously and ensure it happens even if this request fails after updating the current match
+    let nextMatch: DrawMatchModel | null = null;
+    if (match.nextMatchId) {
+      nextMatch = await drawRepository.getMatchById(
+        tournamentId,
+        match.nextMatchId,
+      );
+      if (nextMatch) {
+        let updateFields: any = {};
+        if (!nextMatch.player1Id) {
+          updateFields.player1Id = data.winnerId;
+        } else if (!nextMatch.player2Id) {
+          updateFields.player2Id = data.winnerId;
+        }
+        if (
+          (updateFields.player1Id || nextMatch.player1Id) &&
+          (updateFields.player2Id || nextMatch.player2Id)
+        ) {
+          updateFields.status = GameStatus.Scheduled;
+        }
+        await drawRepository.updateMatchFields(
+          tournamentId,
+          match.nextMatchId,
+          updateFields,
+        );
+      }
+    }
 
     // Check if tournament is complete (final match has winner)
-    await this.checkAndCompleteTournament(tournamentId, updatedMatches);
+    const matchesForFinalCheck = [match];
+    if (nextMatch) matchesForFinalCheck.push(nextMatch);
+    await this.checkAndCompleteTournament(tournamentId, matchesForFinalCheck);
 
-    return match;
+    // Fetch and return the updated match
+    const updatedMatch = await drawRepository.getMatchById(
+      tournamentId,
+      matchId,
+    );
+    return toDrawMatchDTO(updatedMatch!);
   }
 
   /**
