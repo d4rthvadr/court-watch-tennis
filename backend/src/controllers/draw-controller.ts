@@ -3,7 +3,7 @@ import {
   drawManagementService,
   GenerateDrawData,
   UpdateMatchResultData,
-} from "../services/draw-management-service";
+} from "@services/draw-management-service";
 
 export interface GenerateDrawRequest {
   players: Array<{ id: string; name: string; seed?: number }>;

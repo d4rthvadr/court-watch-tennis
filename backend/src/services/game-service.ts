@@ -1,7 +1,7 @@
 import { NotFoundError } from "../errors";
 import { Game, GameStatus, EventTypes } from "../types";
-import { gameRepository } from "../models/repositories";
-import { GameModel } from "../models/game";
+import { gameRepository } from "@models/repositories";
+import { GameModel } from "@models/game";
 import { eventBus } from "../event-bus";
 
 const toGameDTO = (g: GameModel): Game => ({

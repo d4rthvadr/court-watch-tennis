@@ -9,10 +9,10 @@ import {
 } from "../types";
 import { drawOrchestratorService } from "./draw/draw-orchestrator-service";
 import { eventBus } from "../event-bus";
-import { drawRepository } from "../models/repositories";
+import { drawRepository } from "@models/repositories";
 import { tournamentService } from "./tournament-service";
-import { DrawEntryModel, DrawMatchModel } from "../models/draw";
-import { DrawStructureModels } from "../models/repositories/DrawRepository";
+import { DrawEntryModel, DrawMatchModel } from "@models/draw";
+import { DrawStructureModels } from "@models/repositories/DrawRepository";
 
 function toDrawEntryDTO(model: DrawEntryModel): DrawEntry {
   return {

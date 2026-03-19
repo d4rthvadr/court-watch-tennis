@@ -1,11 +1,11 @@
 import { Response, Request, Router } from "express";
-import { drawController } from "../controllers/draw-controller";
+import { drawController } from "@controllers/draw-controller";
 import {
   generateDrawValidator,
   GenerateDrawRequest,
 } from "../validators/tournament-validator";
 
-import { playerService } from "../services/player-service";
+import { playerService } from "@services/player-service";
 import { asyncHandler } from "../utils/async-handler";
 import { handleValidationErrors } from "../validators";
 

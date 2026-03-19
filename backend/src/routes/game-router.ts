@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { asyncHandler } from "../utils/async-handler";
-import { gameController } from "../controllers/game-controller";
+import { gameController } from "@controllers/game-controller";
 import {
   createGameValidator,
   updateGameValidator,

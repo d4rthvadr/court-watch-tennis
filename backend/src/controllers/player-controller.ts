@@ -3,7 +3,7 @@ import {
   playerService,
   CreatePlayerData,
   UpdatePlayerData,
-} from "../services/player-service";
+} from "@services/player-service";
 
 export interface CreatePlayerRequest {
   name: string;

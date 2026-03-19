@@ -1,5 +1,5 @@
 import { Game, GameStatus } from "../types";
-import { gameService } from "../services/game-service";
+import { gameService } from "@services/game-service";
 import type {
   CreateGameRequest,
   UpdateGameRequest,

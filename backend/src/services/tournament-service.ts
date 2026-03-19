@@ -6,8 +6,8 @@ import {
   DrawSize,
   MatchType,
 } from "../types";
-import { tournamentRepository } from "../models/repositories";
-import { TournamentModel } from "../models/tournament";
+import { tournamentRepository } from "@models/repositories";
+import { TournamentModel } from "@models/tournament";
 
 const toTournamentDTO = (t: TournamentModel): Tournament => ({
   id: t.id!,

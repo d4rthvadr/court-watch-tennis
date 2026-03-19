@@ -1,5 +1,5 @@
 import { Response, Request, Router } from "express";
-import { tournamentController } from "../controllers/tournament-controller";
+import { tournamentController } from "@controllers/tournament-controller";
 import { TournamentStatus, SurfaceType, DrawSize, MatchType } from "../types";
 import {
   createTournamentValidator,

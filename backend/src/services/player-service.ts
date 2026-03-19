@@ -1,7 +1,7 @@
 import { NotFoundError } from "../errors";
 import { Player } from "../types";
-import { playerRepository } from "../models/repositories";
-import { PlayerModel } from "../models/player";
+import { playerRepository } from "@models/repositories";
+import { PlayerModel } from "@models/player";
 
 const toPlayerDTO = (p: PlayerModel): Player => ({
   id: p.id!,

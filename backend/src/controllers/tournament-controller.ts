@@ -8,7 +8,7 @@ import {
 import {
   tournamentService,
   CreateTournamentData,
-} from "../services/tournament-service";
+} from "@services/tournament-service";
 
 export interface CreateTournamentRequest {
   name: string;
