@@ -213,7 +213,12 @@ export class DrawRepository extends Database {
   ): Promise<DrawMatchModel | null> {
     const match = await this.drawMatch.update({
       where: { id: matchId, tournamentId },
-      data: fields,
+      data: {
+        winnerId: fields.winnerId,
+        player1Id: fields.player1Id,
+        player2Id: fields.player2Id,
+        status: fields.status as GameStatus,
+      },
     });
     return mapToDrawMatch(match);
   }

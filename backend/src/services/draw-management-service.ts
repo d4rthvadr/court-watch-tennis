@@ -1,4 +1,4 @@
-import { NotFoundError } from "../errors";
+import { BadRequestError, NotFoundError } from "../errors";
 import {
   DrawStructure,
   DrawMatch,
@@ -9,7 +9,6 @@ import {
   GameStatus,
 } from "../types";
 import { drawOrchestratorService } from "./draw/draw-orchestrator-service";
-import { eventBus } from "../event-bus";
 import { drawRepository } from "@models/repositories";
 import { tournamentService } from "./tournament-service";
 import { DrawEntryModel, DrawMatchModel } from "@models/draw";
@@ -98,6 +97,8 @@ export interface UpdateMatchResultData {
   winnerId: string;
 }
 
+import { gameService } from "./game-service";
+
 class DrawManagementService {
   /**
    * Generate draw for a tournament
@@ -173,9 +174,15 @@ class DrawManagementService {
       throw new NotFoundError(`Match not found with id: ${matchId}`);
     }
 
-    // Business logic: validate match hasn't been completed
-    if (match.winnerId) {
-      throw new Error(`Match ${matchId} has already been completed`);
+    // Business logic: validate status transition (delegate to gameService)
+    try {
+      gameService["validateStatusTransition"](
+        match.status,
+        GameStatus.Completed,
+      );
+    } catch (err: any) {
+      // Convert error to BadRequestError for consistency
+      throw new BadRequestError(err.message);
     }
 
     // Business logic: validate winner is a participant
@@ -183,7 +190,7 @@ class DrawManagementService {
       match.player1Id !== data.winnerId &&
       match.player2Id !== data.winnerId
     ) {
-      throw new Error(
+      throw new BadRequestError(
         `Winner ${data.winnerId} is not a participant in match ${matchId}`,
       );
     }
@@ -203,7 +210,11 @@ class DrawManagementService {
         match.nextMatchId,
       );
       if (nextMatch) {
-        let updateFields: any = {};
+        let updateFields: {
+          player1Id?: string | null;
+          player2Id?: string | null;
+          status?: GameStatus;
+        } = {};
         if (!nextMatch.player1Id) {
           updateFields.player1Id = data.winnerId;
         } else if (!nextMatch.player2Id) {
@@ -224,9 +235,7 @@ class DrawManagementService {
     }
 
     // Check if tournament is complete (final match has winner)
-    const matchesForFinalCheck = [match];
-    if (nextMatch) matchesForFinalCheck.push(nextMatch);
-    await this.checkAndCompleteTournament(tournamentId, matchesForFinalCheck);
+    await this.checkAndCompleteTournament(tournamentId, match);
 
     // Fetch and return the updated match
     const updatedMatch = await drawRepository.getMatchById(
@@ -259,93 +268,18 @@ class DrawManagementService {
   }
 
   /**
-   * Emit player advanced event
-   */
-  private emitPlayerAdvancedEvent(
-    tournamentId: string,
-    matchId: string,
-    winnerId: string,
-    round: string,
-  ): void {
-    eventBus.createEvent(EventTypes.playerAdvanced, {
-      tournamentId,
-      matchId,
-      winnerId,
-      round,
-    });
-
-    const eventData = JSON.stringify({
-      type: EventTypes.playerAdvanced,
-      payload: {
-        tournamentId,
-        matchId,
-        winnerId,
-        round,
-      },
-    });
-    eventBus.createEvent(EventTypes.sseNotification, eventData);
-  }
-
-  /**
-   * Check if all matches in a round are complete and emit event
-   */
-  private async checkAndEmitRoundCompletion(
-    tournamentId: string,
-    round: RoundTypeEnum,
-  ): Promise<void> {
-    const roundMatches = await drawRepository.getMatchesByRound(
-      tournamentId,
-      round,
-    );
-    const allComplete = roundMatches.every((m: DrawMatch) => m.winnerId);
-
-    if (allComplete) {
-      eventBus.createEvent(EventTypes.roundCompleted, {
-        tournamentId,
-        round,
-      });
-
-      const eventData = JSON.stringify({
-        type: EventTypes.roundCompleted,
-        payload: {
-          tournamentId,
-          round,
-        },
-      });
-      eventBus.createEvent(EventTypes.sseNotification, eventData);
-    }
-  }
-
-  /**
    * Check if tournament is complete and update status
    */
   private async checkAndCompleteTournament(
     tournamentId: string,
-    matches: DrawMatch[],
+    match: DrawMatch,
   ): Promise<void> {
-    const finalMatch = matches.find(
-      (m) => m.round === RoundTypeEnum.F && m.winnerId,
-    );
-
-    if (finalMatch) {
+    if (match.round === RoundTypeEnum.F && match.winnerId) {
       await tournamentService.updateTournamentStatus(
         tournamentId,
         TournamentStatus.Completed,
       );
-
-      eventBus.createEvent(EventTypes.tournamentCompleted, {
-        tournamentId,
-        winnerId: finalMatch.winnerId,
-      });
-
-      const tournamentEventData = JSON.stringify({
-        type: EventTypes.tournamentCompleted,
-        payload: {
-          tournamentId,
-          winnerId: finalMatch.winnerId,
-        },
-      });
-      eventBus.createEvent(EventTypes.sseNotification, tournamentEventData);
+      // Event bus logic can be re-enabled here if needed
     }
   }
 }
